@@ -9,33 +9,55 @@ function crop(){let fa=$("cfa").value,q=$("csearch").value.toLowerCase(),r=C.fil
 
 function dashboard(){
  if(!S)return;
- $("season-label").textContent=S.month||"Current season";
  const all=S.rows||[],combined=all.find(x=>x.type==="combined")||{},faRows=all.filter(x=>x.type==="fa");
- const activeExtra=!!S.showA1B2;
  const fmt=x=>Number(x||0).toLocaleString("en-IN",{maximumFractionDigits:2});
  const pct=x=>`${Number(x||0).toFixed(2)}%`;
- const cards=[
-  ["Field Assistants",faRows.length,"users","green"],
-  ["Total Area",fmt(combined.acres||all.filter(x=>x.type==="subtotal").reduce((a,x)=>a+x.acres,0))+" acres","sprout","green"],
-  ["Total Tonnage",fmt(combined.total)+" kg","scale","blue"],
-  ["60+ Grade",pct(combined.p60),"leaf","green"],
-  ["30+ Grade",pct(combined.p30),"leaf","orange"],
-  ["-30 Grade",pct(combined.p30m),"leaf","red"],
-  ["Overall Yield",fmt(combined.yield)+" t/acre","chart","purple"]
- ];
- let visibleGrades=[...(activeExtra?["A1","B2"]:[]),"60+","30+","-30"];
+ const activeExtra=!!S.showA1B2;
+ const visibleGrades=[...(activeExtra?["A1","B2"]:[]),"60+","30+","-30"];
  const qtyKey={"A1":"A1","B2":"B2","60+":"g60","30+":"g30","-30":"g30m"};
  const pctKey={"A1":"pA1","B2":"pB2","60+":"p60","30+":"p30","-30":"p30m"};
- const kpis=cards.map((c,i)=>`<div class="kpi ${c[3]}"><small>${c[0]}</small><strong>${c[1]}</strong></div>`).join("");
- const header=`<tr><th>Location</th><th>Field Assistant</th><th>Acres</th>${visibleGrades.map(g=>`<th>${g} kg</th>`).join("")}<th>Total kg</th>${visibleGrades.map(g=>`<th>${g} %</th>`).join("")}<th>Yield (t/acre)</th></tr>`;
- const body=all.map(x=>{
-  let cells=`<td class="loc-cell">${esc(x.location||"")}</td><td class="fa-name">${esc(x.name)}</td><td>${fmt(x.acres)}</td>`;
-  cells+=visibleGrades.map(g=>`<td>${fmt(x[qtyKey[g]])}</td>`).join("");
-  cells+=`<td><b>${fmt(x.total)}</b></td>`;
-  cells+=visibleGrades.map(g=>`<td>${pct(x[pctKey[g]])}</td>`).join("");
-  cells+=`<td><b>${fmt(x.yield)}</b></td>`;
-  return `<tr class="${x.type==="combined"?"total combined":x.type==="subtotal"?"total subtotal":""}">${cells}</tr>`;
- }).join("");
- $("dash-content").innerHTML=`<div class="kpis">${kpis}</div><div class="panel"><div class="dash-section-title"><h3>FA-wise tonnage performance</h3><span class="subnote">Live figures from FA Wise Summary</span></div><div class="tablewrap"><table><thead>${header}</thead><tbody>${body}</tbody></table></div><div class="subnote">A1 and B2 columns are automatically hidden while their quantities are zero. Refresh to load updated sheet values.</div><button class="btn" onclick="print()">Print / Save PDF</button></div>`;
+ const cards=[
+  {label:"Total Area",value:`${fmt(combined.acres)} <small>Acres</small>`,tone:"area",icon:"▥"},
+  {label:"Total Tonnage",value:`${fmt(combined.total)} <small>kg</small>`,tone:"tonnage",icon:"⚖"},
+  {label:"60+ Grade",value:pct(combined.p60),tone:"grade60",icon:"❧"},
+  {label:"30+ Grade",value:pct(combined.p30),tone:"grade30",icon:"❧"},
+  {label:"-30 Grade",value:pct(combined.p30m),tone:"grade30m",icon:"❧"},
+  {label:"Overall Yield",value:`${fmt(combined.yield)} <small>t/acre</small>`,tone:"yield",icon:"▥"}
+ ];
+ const kpis=cards.map(c=>`<article class="kpi ${c.tone}"><span class="kpi-icon">${c.icon}</span><div><div class="kpi-label">${c.label}</div><div class="kpi-value">${c.value}</div></div></article>`).join("");
+ const groupHead=`<tr><th rowspan="2">Location</th><th rowspan="2">Field Assistant</th><th rowspan="2">Acres</th><th colspan="${visibleGrades.length+1}">Quantity (kg)</th><th colspan="${visibleGrades.length}">Share of Total</th><th rowspan="2">Yield<br>(t/acre)</th></tr><tr>${visibleGrades.map(g=>`<th class="grade-head ${g==='60+'?'g60':g==='30+'?'g30':g==='-30'?'gm30':'extra'}">${g}</th>`).join("")}<th class="total-head">Total</th>${visibleGrades.map(g=>`<th class="grade-head ${g==='60+'?'g60':g==='30+'?'g30':g==='-30'?'gm30':'extra'}">${g} %</th>`).join("")}</tr>`;
+ const locations=[...new Set(all.filter(x=>x.type==='fa'||x.type==='subtotal').map(x=>x.location).filter(x=>x&&x!=='Combined'))];
+ let body='';
+ for(const loc of locations){
+   const group=all.filter(x=>x.location===loc && x.type!=='combined');
+   const regular=group.filter(x=>x.type==='fa'),subtotal=group.find(x=>x.type==='subtotal');
+   const rows=[...regular,...(subtotal?[subtotal]:[])];
+   rows.forEach((x,i)=>{
+    const isTotal=x.type==='subtotal';
+    let cells='';
+    if(i===0)cells+=`<td class="location-cell" rowspan="${rows.length}"><span class="pin">●</span>${esc(loc)}</td>`;
+    cells+=`<td class="fa-cell ${isTotal?'subtotal-name':''}">${isTotal?'Σ ':''}${esc(x.name)}</td><td>${fmt(x.acres)}</td>`;
+    cells+=visibleGrades.map(g=>`<td class="qty-${g.replace(/[^a-z0-9]/gi,'').toLowerCase()}">${fmt(x[qtyKey[g]])}</td>`).join('');
+    cells+=`<td class="strong-col">${fmt(x.total)}</td>`;
+    cells+=visibleGrades.map(g=>`<td>${pct(x[pctKey[g]])}</td>`).join('');
+    cells+=`<td class="yield-cell">${fmt(x.yield)}</td>`;
+    body+=`<tr class="${isTotal?'subtotal-row':''}">${cells}</tr>`;
+   });
+ }
+ if(combined && combined.type==='combined'){
+  let cells=`<td class="combined-label" colspan="3">COMBINED TOTAL</td>`;
+  cells+=visibleGrades.map(g=>`<td>${fmt(combined[qtyKey[g]])}</td>`).join('');
+  cells+=`<td>${fmt(combined.total)}</td>`;
+  cells+=visibleGrades.map(g=>`<td>${pct(combined[pctKey[g]])}</td>`).join('');
+  cells+=`<td>${fmt(combined.yield)}</td>`;
+  body+=`<tr class="combined-row">${cells}</tr>`;
+ }
+ const month=S.month||"Current season";
+ $("season-label").textContent=month;
+ $("dash-content").innerHTML=`<div class="kpi-grid">${kpis}</div>
+ <section class="report-card"><div class="report-heading"><div><div class="eyebrow">FIELD PERFORMANCE</div><h2>FA-wise tonnage summary</h2><p>Harvest grading and yield across Chelur and Hoskere</p></div><div class="live-tag"><i></i> Live spreadsheet data</div></div>
+ <div class="table-shell"><table class="summary-table"><thead>${groupHead}</thead><tbody>${body}</tbody></table></div>
+ <div class="report-foot"><span>Source: FA Wise Summary · ${esc(month)}</span><span>A1 and B2 appear automatically when quantities are recorded.</span></div>
+ <button class="btn print-btn" onclick="print()">Print / Save PDF</button></section>`;
 }
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));["dashboard","fruit","crop"].forEach(id=>$(id).classList.toggle("hidden",b.dataset.v!==id))});$("ffa").onchange=()=>{farmers();fruit()};$("ffarmer").onchange=fruit;$("fsearch").oninput=fruit;$("cfa").onchange=crop;$("csearch").oninput=crop;start();
+document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-v]").forEach(x=>x.classList.toggle("active",x===b));["dashboard","fruit","crop"].forEach(id=>$(id).classList.toggle("hidden",b.dataset.v!==id));window.scrollTo({top:0,behavior:"smooth"})});$("ffa").onchange=()=>{farmers();fruit()};$("ffarmer").onchange=fruit;$("fsearch").oninput=fruit;$("cfa").onchange=crop;$("csearch").oninput=crop;start();
