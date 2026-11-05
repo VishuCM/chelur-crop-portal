@@ -1,39 +1,22 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#174d35"><link rel="manifest" href="manifest.webmanifest"><title>Chelur Crop Portal</title><style>
-:root{--g:#174d35;--gd:#0f3d29;--p:#eaf4ed;--line:#cbd9cf;--ink:#18231c;--muted:#627267;--stripe:#f4f8f5}
-*{box-sizing:border-box}
-body{margin:0;background:#f3f7f4;color:var(--ink);font:15px system-ui,-apple-system,"Segoe UI",sans-serif}
-header{background:linear-gradient(115deg,var(--gd),var(--g));color:white;padding:22px 18px;border-radius:0 0 20px 20px}
-header h1{margin:10px 0 3px;font-size:24px;letter-spacing:-.3px}
-header p{margin:0;color:#d5e8da}
-main{max-width:1180px;margin:auto;padding:16px}
-.tabs{display:flex;gap:8px;margin-bottom:14px}
-.tab,.btn{border:0;border-radius:12px;padding:12px;font:inherit;font-weight:750}
-.tab{flex:1;background:white;color:var(--g);border:1px solid var(--line);cursor:pointer}
-.active,.btn{background:var(--g);color:white}
-.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:14px;box-shadow:0 2px 8px #173d2710}
-.panel h3{margin:2px 0 12px;font-size:18px}
-.field{margin:9px 0}
-label{display:block;font-size:11px;font-weight:800;letter-spacing:.35px;color:var(--muted);margin-bottom:5px}
+:root{--g:#174d35;--gd:#0c3827;--ink:#17251d;--muted:#627267;--line:#d2dfd5;--stripe:#f4f8f5}
+*{box-sizing:border-box}body{margin:0;background:#f2f6f3;color:var(--ink);font:15px system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:linear-gradient(90deg,rgba(7,47,31,.97),rgba(10,59,36,.68)),url('gherkin-banner.png') center 48%/cover;color:white;padding:20px 22px;min-height:160px;border-radius:0 0 20px 20px}
+header h1{margin:12px 0 3px;font-size:27px;letter-spacing:-.4px}header p{margin:0;color:#e2eee5}.brand{font-weight:850;letter-spacing:.4px}.status{font-size:12px;color:#d5e8da;margin-top:9px}
+main{max-width:1440px;margin:auto;padding:16px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}.tab,.btn{border:0;border-radius:11px;padding:12px 16px;font:inherit;font-weight:750;cursor:pointer}
+.tab{flex:1;min-width:140px;background:white;color:var(--g);border:1px solid var(--line)}.active,.btn{background:var(--g);color:white}
+.panel{background:white;border:1px solid var(--line);border-radius:15px;padding:15px;margin-bottom:14px;box-shadow:0 2px 9px #173d270d}.panel h3{margin:2px 0 12px;font-size:18px}
+.field{margin:9px 0}label{display:block;font-size:11px;font-weight:800;letter-spacing:.35px;color:var(--muted);margin-bottom:5px}
 select,input{width:100%;padding:12px;border:1px solid #cbd8cf;border-radius:10px;background:white;font:inherit;color:var(--ink)}
-select:focus,input:focus{outline:2px solid #9bc8a8;outline-offset:1px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-.metric{background:linear-gradient(135deg,#edf7ef,#e4f1e7);padding:12px;border:1px solid #d7e9db;border-radius:12px}
-.metric small{display:block;color:var(--muted);font-weight:600}
-.metric b{display:block;font-size:20px;line-height:1.35;font-weight:800;color:#173e29}
-.tablewrap{overflow:auto;border:1px solid #b9cbbf;border-radius:11px;margin:10px 0;background:white}
-table{border-collapse:collapse;width:100%;min-width:700px;font-size:12px}
-th,td{padding:9px 10px;border:1px solid #d2ddd5;text-align:center;white-space:nowrap}
-th{background:#e7f1e9;color:#204a31;font-weight:850;border-color:#bdcec2}
-td{font-weight:500}
-tbody tr:nth-child(even),table tr:nth-child(even){background:var(--stripe)}
-th:first-child,td:first-child{text-align:center}
-.total{font-weight:850!important;background:#e1f2e3!important;color:#143c27}
-.total td{font-weight:900!important;border-top:2px solid #8eb99a;text-align:center!important}tfoot .total td{font-weight:900!important;background:#dff1df!important}
-.tablewrap table tr:hover td{background:#edf6ef}
-.btn{width:100%;margin-top:10px;cursor:pointer}
-.muted{font-size:12px;color:var(--muted)}
-.hidden{display:none}
-.status{font-size:12px;color:#d5e8da;margin-top:8px}
-@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.metric{background:linear-gradient(135deg,#edf7ef,#e4f1e7);padding:13px;border:1px solid #d7e9db;border-radius:12px}.metric small{display:block;color:var(--muted);font-weight:650}.metric b{display:block;font-size:21px;font-weight:850;color:#173e29;margin-top:3px}
+.tablewrap{overflow:auto;border:1px solid #b9cbbf;border-radius:11px;margin:10px 0;background:white}table{border-collapse:collapse;width:100%;min-width:700px;font-size:12px}th,td{padding:9px 10px;border:1px solid #d2ddd5;text-align:center;white-space:nowrap}th{background:#e7f1e9;color:#204a31;font-weight:850}td{font-weight:550}tbody tr:nth-child(even){background:var(--stripe)}.total td{font-weight:900!important;background:#e1f2e3!important;border-top:2px solid #8eb99a;color:#143c27}
+.hidden{display:none}.btn{width:100%;margin-top:10px}.muted{font-size:12px;color:var(--muted)}
+.dash-hero{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 14px;padding:0 2px}.dash-hero h2{margin:0;color:#153e2a;font-size:22px}.season-pill{background:#e4f1e7;color:#174d35;padding:8px 12px;border-radius:99px;font-weight:800;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.kpi{border:1px solid var(--line);border-radius:14px;padding:13px;background:white;box-shadow:0 2px 8px #173d2708}.kpi small{display:block;color:var(--muted);font-weight:700}.kpi strong{display:block;font-size:22px;margin-top:4px}.kpi.green{background:#eaf5ec}.kpi.blue{background:#eaf3fa}.kpi.orange{background:#fff2e4}.kpi.red{background:#fcebed}.kpi.purple{background:#f2edfb}
+.dash-section-title{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 8px}.dash-section-title h3{margin:0;color:#19452e}.subnote{font-size:12px;color:var(--muted)}
+.loc-cell{font-weight:850;color:#174d35;background:#edf6ef}.fa-name{text-align:left;font-weight:700}.total.subtotal td{background:#e4f1e7!important}.total.combined td{background:#174d35!important;color:white!important}
+@media(min-width:760px){.grid{grid-template-columns:repeat(4,1fr)}.kpis{grid-template-columns:repeat(6,1fr)}.filters-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}
+@media(max-width:600px){header{min-height:145px;padding:17px}.kpis{grid-template-columns:repeat(2,1fr)}.dash-hero{align-items:start;flex-direction:column}.kpi strong{font-size:19px}}
 @media print{header,.tabs,.filters,.btn{display:none!important}body{background:white}.panel{box-shadow:none;border:0;padding:0}.tablewrap{overflow:visible}table{font-size:9px;min-width:0}th,td{padding:5px;border:1px solid #999}}
-</style></head><body><header><b>🌱 CHELUR · FIELD ASSISTANT PORTAL</b><h1>Crop & Purchase Information</h1><p>Current-season farmer records</p><div id="status" class="status">Connecting…</div></header><main><div class="tabs"><button class="tab active" data-v="fruit">🍈 Fruit Purchases</button><button class="tab" data-v="crop">🌿 Crop Analysis</button></div><section id="fruit"><div class="panel filters"><h3>Find purchase records</h3><div class="field"><label>FIELD ASSISTANT</label><select id="ffa"><option value="">All Field Assistants</option></select></div><div class="field"><label>FARMER</label><select id="ffarmer"><option value="">All Farmers</option></select></div><div class="field"><label>SEARCH ACCOUNT NUMBER</label><input id="fsearch" placeholder="Farmer account number"></div></div><div id="fout"></div></section><section id="crop" class="hidden"><div class="panel filters"><h3>Crop analysis</h3><div class="field"><label>FILTER BY FIELD ASSISTANT</label><select id="cfa"><option value="">All Field Assistants</option></select></div><div class="field"><label>SEARCH FARMER</label><input id="csearch" placeholder="Code or farmer name"></div></div><div id="cout"></div></section></main><script src="app.js"></script><script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));</script></body></html>
+</style></head><body><header><div class="brand">🌱 CHELUR · FIELD ASSISTANT PORTAL</div><h1>Crop & Purchase Information</h1><p>Field operations · Current-season overview</p><div id="status" class="status">Connecting to live spreadsheets…</div></header><main><div class="tabs"><button class="tab active" data-v="dashboard">⌂ Dashboard</button><button class="tab" data-v="fruit">🍈 Fruit Purchases</button><button class="tab" data-v="crop">🌿 Crop Analysis</button></div><section id="dashboard"><div class="dash-hero"><div><h2>Field Assistant Summary</h2><div class="muted">FA-wise tonnage details of Chelur and Hoskere</div></div><div class="season-pill" id="season-label">Current season</div></div><div id="dash-content"><div class="panel">Loading seasonal summary…</div></div></section><section id="fruit" class="hidden"><div class="panel filters"><h3>Find purchase records</h3><div class="field"><label>FIELD ASSISTANT</label><select id="ffa"><option value="">All Field Assistants</option></select></div><div class="field"><label>FARMER</label><select id="ffarmer"><option value="">All Farmers</option></select></div><div class="field"><label>SEARCH ACCOUNT NUMBER</label><input id="fsearch" placeholder="Farmer account number"></div></div><div id="fout"></div></section><section id="crop" class="hidden"><div class="panel filters"><h3>Crop analysis</h3><div class="field"><label>FILTER BY FIELD ASSISTANT</label><select id="cfa"><option value="">All Field Assistants</option></select></div><div class="field"><label>SEARCH FARMER</label><input id="csearch" placeholder="Code or farmer name"></div></div><div id="cout"></div></section></main><script src="app.js"></script><script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));</script></body></html>
