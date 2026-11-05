@@ -7,11 +7,29 @@ function farmers(){let a=F.filter(x=>!$("ffa").value||x.fa===$("ffa").value),u=[
 function fruit(){
  let fa=$("ffa").value,code=$("fsearch").value.trim()||$("ffarmer").value;
  let rows=F.filter(x=>(!fa||x.fa===fa)&&(!code||String(x.code)===String(code)));
- rows.sort((a,b)=>a.date.localeCompare(b.date));
+ const dateValue=s=>{const t=String(s||"").trim();let m=t.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]).getTime();let d=new Date(t);return isNaN(d)?0:d.getTime()};rows.sort((a,b)=>dateValue(a.date)-dateValue(b.date));
  if(!rows.length){$("fout").innerHTML='<div class="fruit-empty">No purchase records found. Try another Field Assistant or farmer account number.</div>';return}
  let people=[...new Map(rows.map(x=>[x.code,x])).values()];
  const grades=["A1","B2","C3","D4","E5"];
- $("fout").innerHTML=people.map(p=>{
+ let faOverview="";
+ if(fa&&!code){
+  let faQty=sum(rows,x=>x.qty.total),faAmount=sum(rows,x=>x.amount.total),faReceipts=rows.length,faAvg=faQty?faAmount/faQty:0;
+  let faGradeQty={},faGradeAmount={};grades.forEach(g=>{faGradeQty[g]=sum(rows,x=>x.qty[g]);faGradeAmount[g]=sum(rows,x=>x.amount[g])});
+  let faGradeCards=grades.map(g=>`<article class="grade-card"><div class="grade-card-head">${g}</div><div class="grade-card-body"><span>${kg(faGradeQty[g])}<small>QUANTITY</small></span><span>${money(faGradeAmount[g])}<small>AMOUNT</small></span></div></article>`).join("");
+  faOverview=`<section class="fa-performance">
+   <div class="fa-performance-head"><div><div class="eyebrow">FIELD ASSISTANT PERFORMANCE</div><h2>${esc(fa)}</h2><p>${esc(rows[0]?.fa||fa)} · ${people.length} farmers in current-season purchase records</p></div><span class="live-tag"><i></i>Live purchase data</span></div>
+   <div class="fruit-kpis">
+    <div class="fruit-kpi"><span class="fruit-kpi-icon">♟</span><div><small>Farmers</small><strong>${people.length}</strong></div></div>
+    <div class="fruit-kpi"><span class="fruit-kpi-icon">⚖</span><div><small>Total Quantity</small><strong>${kg(faQty)}</strong></div></div>
+    <div class="fruit-kpi"><span class="fruit-kpi-icon">▤</span><div><small>Total Earnings</small><strong>${money(faAmount)}</strong></div></div>
+    <div class="fruit-kpi"><span class="fruit-kpi-icon">◇</span><div><small>Average Price/kg</small><strong>${money(faAvg)}</strong></div></div>
+   </div>
+   <div class="fruit-subhead"><h3>FA Grade-wise Performance</h3><p>${faReceipts} purchase receipts across ${people.length} farmers</p></div>
+   <div class="grade-cards">${faGradeCards}</div>
+   <div class="farmer-list-heading"><h3>Farmers under ${esc(fa)}</h3><p>Individual purchase statements appear below</p></div>
+  </section>`;
+ }
+ $("fout").innerHTML=faOverview+people.map(p=>{
   let r=rows.filter(x=>String(x.code)===String(p.code)),q={},v={};
   grades.forEach(g=>{q[g]=sum(r,x=>x.qty[g]);v[g]=sum(r,x=>x.amount[g])});
   let tq=sum(r,x=>x.qty.total),tv=sum(r,x=>x.amount.total),avg=tq?tv/tq:0;
