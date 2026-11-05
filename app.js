@@ -1,129 +1,3 @@
-const API="https://script.google.com/macros/s/AKfycbw2zzARX3MqaXdP6WMTQRLamlyRpC6moKKTXijdXfwOml-TCp-xEnHO7qdhwm65ARmx/exec";let F=[],C=[],S=null;const $=x=>document.getElementById(x),money=x=>"₹"+Number(x||0).toLocaleString("en-IN",{maximumFractionDigits:2}),kg=x=>Number(x||0).toLocaleString("en-IN")+" kg",esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));function sum(a,f){return a.reduce((s,x)=>s+Number(f(x)||0),0)}
-function api(action){return new Promise((ok,no)=>{if(!API.startsWith("https://"))return no(Error("Add your Apps Script /exec URL in app.js"));let cb="cb"+Date.now()+Math.random().toString(36).slice(2),s=document.createElement("script"),t=setTimeout(()=>{delete window[cb];s.remove();no(Error("Data service timed out"))},20000);window[cb]=x=>{clearTimeout(t);delete window[cb];s.remove();ok(x)};s.onerror=()=>{clearTimeout(t);delete window[cb];no(Error("Cannot reach spreadsheet service"))};s.src=API+"?action="+action+"&callback="+cb;document.body.append(s)})}
-async function start(){try{$("status").textContent="Loading latest sheet data…";let [f,c,s]=await Promise.all([api("fruit"),api("crop"),api("summary")]);if(!f.ok||!c.ok||!s.ok)throw Error(f.error||c.error||s.error);F=f.data.rows;C=c.data.rows;S=s.data;
-const canonicalFA=name=>{const n=String(name||"").trim().toUpperCase().replace(/\s+/g," ");if(n==="LAVAKUMAR")return "LAVAKUMAR T S";if(n==="LOKESH")return "LOKESH R N";return String(name||"").trim()};
-F.forEach(x=>x.fa=canonicalFA(x.fa));C.forEach(x=>x.fa=canonicalFA(x.fa));let fas=[...new Set(F.map(x=>x.fa).concat(C.map(x=>x.fa)).filter(Boolean))].sort();$("ffa").innerHTML='<option value="">All Field Assistants</option>'+fas.map(x=>`<option>${esc(x)}</option>`).join("");populateCropFAs();farmers();fruit();crop();dashboard();$("status").textContent="Data loaded · refresh to check for new entries"}catch(e){$("status").textContent=e.message;$("fout").textContent=e.message}}
-function farmers(){let a=F.filter(x=>!$("ffa").value||x.fa===$("ffa").value),u=[...new Map(a.map(x=>[x.code,x])).values()];u.sort((a,b)=>{let an=Number(a.code),bn=Number(b.code);if(Number.isFinite(an)&&Number.isFinite(bn)&&an!==bn)return an-bn;return String(a.code).localeCompare(String(b.code),undefined,{numeric:true,sensitivity:"base"})});$("ffarmer").innerHTML='<option value="">All Farmers</option>'+u.map(x=>`<option value="${esc(x.code)}">${esc(x.code)} · ${esc(x.farmer)}</option>`).join("")}
-function fruit(){
- let fa=$("ffa").value,code=$("fsearch").value.trim()||$("ffarmer").value;
- let rows=F.filter(x=>(!fa||x.fa===fa)&&(!code||String(x.code)===String(code)));
- const dateValue=s=>{const t=String(s||"").trim();let m=t.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]).getTime();let d=new Date(t);return isNaN(d)?0:d.getTime()};rows.sort((a,b)=>dateValue(a.date)-dateValue(b.date));
- if(!rows.length){$("fout").innerHTML='<div class="fruit-empty">No purchase records found. Try another Field Assistant or farmer account number.</div>';return}
- let people=[...new Map(rows.map(x=>[x.code,x])).values()];
- const grades=["A1","B2","C3","D4","E5"];
- let faOverview="";
- if(fa&&!code){
-  let faQty=sum(rows,x=>x.qty.total),faAmount=sum(rows,x=>x.amount.total),faReceipts=rows.length,faAvg=faQty?faAmount/faQty:0;
-  let faGradeQty={},faGradeAmount={};grades.forEach(g=>{faGradeQty[g]=sum(rows,x=>x.qty[g]);faGradeAmount[g]=sum(rows,x=>x.amount[g])});
-  let faGradeCards=grades.map(g=>`<article class="grade-card"><div class="grade-card-head">${g}</div><div class="grade-card-body"><span>${kg(faGradeQty[g])}<small>QUANTITY</small></span><span>${money(faGradeAmount[g])}<small>AMOUNT</small></span></div></article>`).join("");
-
-  // Chart helpers are local to the FA view. The rest of the portal is unchanged.
-  const chartColors=["#1c7c4a","#83b85a","#e3b341","#e47b3c","#bd5360"];
-  const chartCardStyle="background:#fff;border:1px solid #e3eae4;border-radius:14px;padding:18px;min-width:0;box-shadow:0 3px 12px rgba(25,60,35,.05)";
-
-  const donut=(values,unit)=>{
-    const total=values.reduce((a,b)=>a+b.value,0);
-    let angle=0;
-    const segments=values.map(v=>{
-      const from=angle;
-      angle+=total?(v.value/total)*100:0;
-      return `${v.color} ${from}% ${angle}%`;
-    }).join(",");
-    const gradient=total?`conic-gradient(${segments})`:"#edf1ed";
-    const legend=values.map(v=>`<div style="display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12px"><i style="width:10px;height:10px;border-radius:3px;background:${v.color};flex:none"></i><span style="font-weight:700;min-width:24px">${v.name}</span><b style="margin-left:auto;text-align:right">${unit==="kg"?kg(v.value):money(v.value)}</b></div>`).join("");
-    return `<div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:10px 2px"><div role="img" aria-label="${unit==="kg"?"Quantity":"Earnings"} distribution by grade" style="width:154px;height:154px;flex:none;border-radius:50%;background:${gradient};display:grid;place-items:center"><div style="width:94px;height:94px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 1px 5px #00000012"><strong style="font-size:19px;color:#193f2a">${total?Math.round(total).toLocaleString("en-IN"):"0"}</strong><small style="color:#718076;font-size:10px;letter-spacing:1px">${unit.toUpperCase()}</small></div></div><div style="flex:1;min-width:130px">${legend||'<small style="color:#7b887e">No grade data available</small>'}</div></div>`;
-  };
-
-  const qtySlices=grades.map((g,i)=>({name:g,value:faGradeQty[g],color:chartColors[i]})).filter(x=>x.value>0);
-  const amtSlices=grades.map((g,i)=>({name:g,value:faGradeAmount[g],color:chartColors[i]})).filter(x=>x.value>0);
-
-  const dayMap=new Map();
-  rows.forEach(x=>{const key=String(x.date||"");dayMap.set(key,(dayMap.get(key)||0)+Number(x.qty.total||0));});
-  const dayRows=[...dayMap.entries()].map(([date,value])=>({date,value,stamp:dateValue(date)})).sort((a,b)=>a.stamp-b.stamp);
-
-  const trend=(()=>{
-    if(!dayRows.length)return '<p style="color:#718076">No daily purchase data available.</p>';
-    const w=760,h=250,left=58,right=18,top=18,bottom=48,plotW=w-left-right,plotH=h-top-bottom;
-    const max=Math.max(...dayRows.map(x=>x.value),1);
-    const niceMax=Math.ceil(max/5)*5||max;
-    const x=i=>left+(dayRows.length===1?plotW/2:i*plotW/(dayRows.length-1));
-    const y=v=>top+plotH-(v/niceMax)*plotH;
-    const pts=dayRows.map((d,i)=>`${x(i)},${y(d.value)}`).join(" ");
-    const area=`${x(0)},${top+plotH} ${pts} ${x(dayRows.length-1)},${top+plotH}`;
-
-    const grid=[0,1,2,3,4].map(i=>{
-      const val=niceMax*i/4,yy=y(val);
-      return `<line x1="${left}" y1="${yy}" x2="${w-right}" y2="${yy}" stroke="#e8eee9" stroke-width="1"/><text x="${left-9}" y="${yy+4}" text-anchor="end" font-size="11" fill="#718076">${Math.round(val).toLocaleString("en-IN")}</text>`;
-    }).join("");
-
-    const labels=dayRows.length===1?[0]:[...new Set([0,Math.floor((dayRows.length-1)/2),dayRows.length-1])];
-    const xLabels=labels.map(i=>`<text x="${x(i)}" y="${h-15}" text-anchor="${i===0?"start":i===dayRows.length-1?"end":"middle"}" font-size="11" fill="#718076">${esc(dayRows[i].date)}</text>`).join("");
-    const dots=dayRows.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.value)}" r="4.5" fill="#fff" stroke="#187346" stroke-width="2"><title>${esc(d.date)}: ${kg(d.value)}</title></circle>`).join("");
-
-    return `<div style="width:100%;overflow-x:auto"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Daily purchased quantity trend" style="width:100%;min-width:520px;height:auto;display:block">${grid}<polygon points="${area}" fill="#3b9a65" opacity=".12"/><polyline points="${pts}" fill="none" stroke="#187346" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xLabels}<text x="14" y="${top+plotH/2}" transform="rotate(-90 14 ${top+plotH/2})" text-anchor="middle" font-size="11" fill="#718076">Quantity (kg)</text></svg></div><div style="font-size:11px;color:#718076;margin-top:4px">Hover over a point to see its exact date and quantity · ${dayRows.length} purchase dates</div>`;
-  })();
-
-  faOverview=`<section class="fa-performance">
-   <div class="fa-performance-head"><div><div class="eyebrow">FIELD ASSISTANT PERFORMANCE</div><h2>${esc(fa)}</h2><p>${esc(rows[0]?.fa||fa)} · ${people.length} farmers in current-season purchase records</p></div><span class="live-tag"><i></i>Live purchase data</span></div>
-   <div class="fruit-kpis">
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">♟</span><div><small>Farmers</small><strong>${people.length}</strong></div></div>
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">⚖</span><div><small>Total Quantity</small><strong>${kg(faQty)}</strong></div></div>
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">▤</span><div><small>Total Earnings</small><strong>${money(faAmount)}</strong></div></div>
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">◇</span><div><small>Average Price/kg</small><strong>${money(faAvg)}</strong></div></div>
-   </div>
-   <div class="fruit-subhead"><h3>FA Grade-wise Performance</h3><p>${faReceipts} purchase receipts across ${people.length} farmers</p></div>
-   <div class="grade-cards">${faGradeCards}</div>
-   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin:20px 0">
-    <article style="${chartCardStyle}"><h3 style="margin:0 0 4px;color:#234b32;font-size:16px">Grade Mix · Quantity</h3><p style="margin:0;color:#718076;font-size:12px">Share of total purchased volume</p>${donut(qtySlices,"kg")}</article>
-    <article style="${chartCardStyle}"><h3 style="margin:0 0 4px;color:#234b32;font-size:16px">Grade Mix · Earnings</h3><p style="margin:0;color:#718076;font-size:12px">Share of total farmer payments</p>${donut(amtSlices,"₹")}</article>
-   </div>
-   <article style="${chartCardStyle};margin:16px 0"><h3 style="margin:0 0 4px;color:#234b32;font-size:16px">Daily Purchase Trend</h3><p style="margin:0 0 12px;color:#718076;font-size:12px">Total quantity purchased each day</p>${trend}</article>
-   <div class="farmer-list-heading"><h3>Farmers under ${esc(fa)}</h3><p>Individual purchase statements appear below</p></div>
-  </section>`;
- }
-
- $("fout").innerHTML=faOverview+people.map(p=>{
-  let r=rows.filter(x=>String(x.code)===String(p.code)),q={},v={};
-  grades.forEach(g=>{q[g]=sum(r,x=>x.qty[g]);v[g]=sum(r,x=>x.amount[g])});
-  let tq=sum(r,x=>x.qty.total),tv=sum(r,x=>x.amount.total),avg=tq?tv/tq:0;
-  let gradeCards=grades.map(g=>`<article class="grade-card"><div class="grade-card-head">${g}</div><div class="grade-card-body"><span>${kg(q[g])}<small>QUANTITY</small></span><span>${money(v[g])}<small>AMOUNT</small></span></div></article>`).join("");
-  let historyRows=r.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.buyingSheet)}</td><td>${esc(x.receipt)}</td>${grades.map(g=>`<td>${Number(x.qty[g]||0).toLocaleString("en-IN")}</td>`).join("")}<td class="sum-qty">${Number(x.qty.total||0).toLocaleString("en-IN")}</td>${grades.map(g=>`<td>${money(x.amount[g])}</td>`).join("")}<td class="money-total">${money(x.amount.total)}</td><td>${money(x.avg)}</td></tr>`).join("");
-  let totalCells=grades.map(g=>`<td>${q[g].toLocaleString("en-IN")}</td>`).join("")+`<td>${tq.toLocaleString("en-IN")}</td>`+grades.map(g=>`<td>${money(v[g])}</td>`).join("")+`<td>${money(tv)}</td><td>${money(avg)}</td>`;
-  return `<article class="farmer-statement">
-   <div class="farmer-identity"><span class="farmer-avatar">♟</span><div class="farmer-name">${esc(p.farmer)} · ${esc(p.code)}</div><div class="farmer-meta">● &nbsp; Village: <b>${esc(p.village||"—")}</b></div><div class="farmer-meta">♟ &nbsp; Assigned FA: <b>${esc(p.fa||"—")}</b></div></div>
-   <div class="fruit-kpis">
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">⚖</span><div><small>Total Quantity</small><strong>${kg(tq)}</strong></div></div>
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">▤</span><div><small>Total Earnings</small><strong>${money(tv)}</strong></div></div>
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">▣</span><div><small>Receipts</small><strong>${r.length}</strong></div></div>
-    <div class="fruit-kpi"><span class="fruit-kpi-icon">◇</span><div><small>Average Price/kg</small><strong>${money(avg)}</strong></div></div>
-   </div>
-   <div class="fruit-subhead"><h3>Grade-wise Summary</h3><p>Quantity received and amount earned by grade</p></div>
-   <div class="grade-cards">${gradeCards}</div>
-   <section class="purchase-card"><div class="purchase-card-heading"><div><h3>Purchase History</h3><p>Receipt-wise grade quantities, earnings and average price for the selected farmer.</p></div><span class="live-tag"><i></i>${r.length} receipts</span></div>
-    <div class="history-wrap"><table class="history-table"><thead><tr><th>Date</th><th>Buying<br>sheet</th><th>Receipt</th>${grades.map(g=>`<th>${g} kg</th>`).join("")}<th>Total kg</th>${grades.map(g=>`<th>${g} ₹</th>`).join("")}<th>Total ₹</th><th>Avg ₹/kg</th></tr></thead><tbody>${historyRows}</tbody><tfoot><tr><td colspan="3">TOTAL</td>${totalCells}</tr></tfoot></table></div>
-    <button class="fruit-print" onclick="print()">Print / Save PDF</button>
-   </section>
-  </article>`;
- }).join("");
-}
-
-const FA_AREA={
- "LAVAKUMAR T S":"CHELUR",
- "MANJAPPA":"CHELUR",
- "UMESH S":"CHELUR",
- "LOKESH R N":"CHELUR",
- "SHANTHAPPA":"HOSKERE",
- "ASHOK N G":"HOSKERE",
- "ULLAS K S":"HOSKERE"
-};
-function populateCropFAs(){
- const area=$("carea").value, current=$("cfa").value;
- const names=[...new Set(C.map(x=>x.fa).filter(n=>n&&(!area||FA_AREA[n]===area)))].sort((a,b)=>a.localeCompare(b));
- $("cfa").innerHTML='<option value="">All Field Assistants</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
- if(names.includes(current))$("cfa").value=current;
-}
-function crop(){let area=$("carea").value,fa=$("cfa").value,q=$("csearch").value.toLowerCase(),r=C.filter(x=>(!area||FA_AREA[x.fa]===area)&&(!fa||x.fa===fa)&&(!q||String(x.code).toLowerCase().includes(q)||String(x.farmer).toLowerCase().includes(q)));if(!r.length){$("cout").innerHTML='<div class="panel">No crop records found.</div>';return}let acres=sum(r,x=>x.acres),qtyv=sum(r,x=>x.quantity),val=sum(r,x=>x.cropValue),cost=sum(r,x=>x.inputCost),bal=sum(r,x=>x.closingBalance);$("cout").innerHTML=`<div class="panel"><div class="grid"><div class="metric"><small>Farmers</small><b>${r.length}</b></div><div class="metric"><small>Total acres</small><b>${acres.toFixed(2)}</b></div><div class="metric"><small>Quantity received</small><b>${kg(qtyv)}</b></div><div class="metric"><small>Crop value</small><b>${money(val)}</b></div></div><div class="tablewrap"><table><tr><th>FA</th><th>Code</th><th>Farmer</th><th>Father</th><th>Village</th><th>DOS</th><th>Acres</th><th>DOFH</th><th>DOLH</th><th>THD</th><th>Qty</th><th>Crop value</th><th>Input cost</th><th>Closing balance</th></tr>${r.map(x=>`<tr><td>${esc(x.fa)}</td><td>${esc(x.code)}</td><td>${esc(x.farmer)}</td><td>${esc(x.father)}</td><td>${esc(x.village)}</td><td>${esc(x.dos)}</td><td>${x.acres}</td><td>${esc(x.dofh)}</td><td>${esc(x.dolh)}</td><td>${x.thd}</td><td>${x.quantity}</td><td>${money(x.cropValue)}</td><td>${money(x.inputCost)}</td><td>${money(x.closingBalance)}</td></tr>`).join("")}<tr class="total"><td colspan="6">TOTAL</td><td>${acres.toFixed(2)}</td><td colspan="3"></td><td>${qtyv}</td><td>${money(val)}</td><td>${money(cost)}</td><td>${money(bal)}</td></tr></table></div><button class="btn" onclick="print()">Print / Save PDF</button></div>`}
-
 function dashboard(){
  if(!S)return;
  const all=S.rows||[],combined=all.find(x=>x.type==="combined")||{},faRows=all.filter(x=>x.type==="fa");
@@ -133,6 +7,8 @@ function dashboard(){
  const visibleGrades=[...(activeExtra?["A1","B2"]:[]),"60+","30+","-30"];
  const qtyKey={"A1":"A1","B2":"B2","60+":"g60","30+":"g30","-30":"g30m"};
  const pctKey={"A1":"pA1","B2":"pB2","60+":"p60","30+":"p30","-30":"p30m"};
+
+ // 1. KPI Cards
  const cards=[
   {label:"Total Area",value:`${fmt(combined.acres)} <small>Acres</small>`,tone:"area",icon:"▥"},
   {label:"Total Tonnage",value:`${fmt(combined.total)} <small>kg</small>`,tone:"tonnage",icon:"⚖"},
@@ -142,24 +18,127 @@ function dashboard(){
   {label:"Overall Yield",value:`${fmt(combined.yield)} <small>t/acre</small>`,tone:"yield",icon:"▥"}
  ];
  const kpis=cards.map(c=>`<article class="kpi ${c.tone}"><span class="kpi-icon">${c.icon}</span><div><div class="kpi-label">${c.label}</div><div class="kpi-value">${c.value}</div></div></article>`).join("");
+
+ // Common Chart Styling
+ const chartCardStyle="background:#fff;border:1px solid #e3eae4;border-radius:14px;padding:18px;min-width:0;box-shadow:0 3px 12px rgba(25,60,35,.05);display:flex;flex-direction:column";
+
+ // 2. Visual 1: FA Yield Leaderboard (SVG)
+ const yieldChart=(()=>{
+  const sortedFAs=[...faRows].sort((a,b)=>Number(b.yield||0)-Number(a.yield||0));
+  if(!sortedFAs.length)return '<p style="color:#718076">No FA data available.</p>';
+  const w=420,h=260,left=110,right=45,top=24,bottom=35,plotW=w-left-right,plotH=h-top-bottom;
+  const avgYield=Number(combined.yield||0);
+  const maxY=Math.max(...sortedFAs.map(x=>Number(x.yield||0)),avgYield,1);
+  const niceMax=Math.ceil(maxY*1.15)||10;
+  const barH=14,spacing=plotH/sortedFAs.length;
+
+  const bars=sortedFAs.map((fa,i)=>{
+   const y=top+i*spacing+(spacing-barH)/2;
+   const bw=(Number(fa.yield||0)/niceMax)*plotW;
+   return `<text x="${left-8}" y="${y+11}" text-anchor="end" font-size="11" font-weight="600" fill="#2d3748">${esc(fa.name)}</text>
+   <rect x="${left}" y="${y}" width="${Math.max(bw,2)}" height="${barH}" rx="3" fill="#187346"/>
+   <text x="${left+bw+6}" y="${y+11}" font-size="11" font-weight="700" fill="#187346">${Number(fa.yield||0).toFixed(2)}</text>`;
+  }).join("");
+
+  const xRef=left+(avgYield/niceMax)*plotW;
+  const refLine=`<line x1="${xRef}" y1="${top-6}" x2="${xRef}" y2="${h-bottom}" stroke="#bd5360" stroke-width="1.5" stroke-dasharray="3,3"/><text x="${xRef}" y="${top-10}" text-anchor="middle" font-size="10" font-weight="700" fill="#bd5360">Avg ${avgYield.toFixed(2)}</text>`;
+
+  return `<div style="width:100%;overflow-x:auto"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="FA Yield Leaderboard" style="width:100%;min-width:320px;height:auto;display:block">
+   <line x1="${left}" y1="${top-6}" x2="${left}" y2="${h-bottom}" stroke="#e8eee9" stroke-width="1"/>
+   <line x1="${left}" y1="${h-bottom}" x2="${w-right}" y2="${h-bottom}" stroke="#e8eee9" stroke-width="1"/>
+   ${bars}${refLine}
+   <text x="${left}" y="${h-12}" font-size="10" fill="#718076">0</text>
+   <text x="${w-right}" y="${h-12}" text-anchor="end" font-size="10" fill="#718076">${niceMax} t/a</text>
+  </svg></div>`;
+ })();
+
+ // 3. Visual 2: Regional Quality Mix (100% Stacked Bar SVG)
+ const qualityChart=(()=>{
+  const locations=[...new Set(all.filter(x=>x.type==='fa'||x.type==='subtotal').map(x=>x.location).filter(x=>x&&x!=='Combined'))];
+  const regionData=locations.map(loc=>{
+   const sub=all.find(x=>x.type==='subtotal'&&x.location===loc);
+   if(sub)return {name:loc,p60:Number(sub.p60||0),p30:Number(sub.p30||0),p30m:Number(sub.p30m||0)};
+   const fas=all.filter(x=>x.type==='fa'&&x.location===loc),tot=sum(fas,x=>x.total);
+   return {name:loc,p60:tot?(sum(fas,x=>x.g60)/tot)*100:0,p30:tot?(sum(fas,x=>x.g30)/tot)*100:0,p30m:tot?(sum(fas,x=>x.g30m)/tot)*100:0};
+  });
+
+  const w=340,h=260,left=42,right=18,top=32,bottom=42,plotW=w-left-right,plotH=h-top-bottom;
+  const barW=58;
+
+  const grid=[0,25,50,75,100].map(p=>{
+   const yy=top+plotH-(p/100)*plotH;
+   return `<line x1="${left}" y1="${yy}" x2="${w-right}" y2="${yy}" stroke="#e8eee9" stroke-width="1"/><text x="${left-6}" y="${yy+4}" text-anchor="end" font-size="10" fill="#718076">${p}%</text>`;
+  }).join("");
+
+  const bars=regionData.map((r,i)=>{
+   const cx=left+(i+0.5)*(plotW/regionData.length)-barW/2;
+   const h60=(r.p60/100)*plotH,h30=(r.p30/100)*plotH,h30m=(r.p30m/100)*plotH;
+   const y60=top+plotH-h60,y30=y60-h30,y30m=y30-h30m;
+
+   const txt=(y,h,val)=>h>16?`<text x="${cx+barW/2}" y="${y+h/2+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${val.toFixed(1)}%</text>`:'';
+
+   return `<rect x="${cx}" y="${y60}" width="${barW}" height="${h60}" fill="#1c7c4a"/>${txt(y60,h60,r.p60)}
+   <rect x="${cx}" y="${y30}" width="${barW}" height="${h30}" fill="#e3b341"/>${txt(y30,h30,r.p30)}
+   <rect x="${cx}" y="${y30m}" width="${barW}" height="${h30m}" fill="#bd5360"/>${txt(y30m,h30m,r.p30m)}
+   <text x="${cx+barW/2}" y="${h-15}" text-anchor="middle" font-size="12" font-weight="700" fill="#2d3748">${esc(r.name)}</text>`;
+  }).join("");
+
+  const legend=`<g transform="translate(${left}, 14)" font-size="10">
+   <rect x="0" y="0" width="10" height="10" rx="2" fill="#1c7c4a"/><text x="14" y="9" fill="#555">60+</text>
+   <rect x="60" y="0" width="10" height="10" rx="2" fill="#e3b341"/><text x="74" y="9" fill="#555">30+</text>
+   <rect x="120" y="0" width="10" height="10" rx="2" fill="#bd5360"/><text x="134" y="9" fill="#555">-30</text>
+  </g>`;
+
+  return `<div style="width:100%;overflow-x:auto"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Regional Quality Mix" style="width:100%;min-width:280px;height:auto;display:block">${grid}${legend}${bars}</svg></div>`;
+ })();
+
+ // 4. Visual 3: Daily Purchase Trend across all purchases (SVG)
+ const trendChart=(()=>{
+  const dateValue=s=>{const t=String(s||"").trim();let m=t.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]).getTime();let d=new Date(t);return isNaN(d)?0:d.getTime()};
+  const dayMap=new Map();
+  F.forEach(x=>{const key=String(x.date||"");if(key)dayMap.set(key,(dayMap.get(key)||0)+Number(x.qty?.total||0));});
+  const dayRows=[...dayMap.entries()].map(([date,value])=>({date,value,stamp:dateValue(date)})).sort((a,b)=>a.stamp-b.stamp);
+
+  if(!dayRows.length)return '<p style="color:#718076">No daily purchase records available.</p>';
+  const w=420,h=260,left=56,right=18,top=24,bottom=42,plotW=w-left-right,plotH=h-top-bottom;
+  const max=Math.max(...dayRows.map(x=>x.value),1);
+  const niceMax=Math.ceil(max/1000)*1000||max;
+  const x=i=>left+(dayRows.length===1?plotW/2:i*plotW/(dayRows.length-1));
+  const y=v=>top+plotH-(v/niceMax)*plotH;
+  const pts=dayRows.map((d,i)=>`${x(i)},${y(d.value)}`).join(" ");
+  const area=`${x(0)},${top+plotH} ${pts} ${x(dayRows.length-1)},${top+plotH}`;
+
+  const grid=[0,1,2,3].map(i=>{
+   const val=niceMax*i/3,yy=y(val);
+   return `<line x1="${left}" y1="${yy}" x2="${w-right}" y2="${yy}" stroke="#e8eee9" stroke-width="1"/><text x="${left-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#718076">${Math.round(val/1000)}k</text>`;
+  }).join("");
+
+  const labels=dayRows.length===1?[0]:[...new Set([0,Math.floor((dayRows.length-1)/2),dayRows.length-1])];
+  const xLabels=labels.map(i=>`<text x="${x(i)}" y="${h-15}" text-anchor="${i===0?"start":i===dayRows.length-1?"end":"middle"}" font-size="10" fill="#718076">${esc(dayRows[i].date)}</text>`).join("");
+  const dots=dayRows.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.value)}" r="4" fill="#fff" stroke="#187346" stroke-width="2"><title>${esc(d.date)}: ${kg(d.value)}</title></circle>`).join("");
+
+  return `<div style="width:100%;overflow-x:auto"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Daily Purchase Trend" style="width:100%;min-width:320px;height:auto;display:block">${grid}<polygon points="${area}" fill="#3b9a65" opacity=".12"/><polyline points="${pts}" fill="none" stroke="#187346" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xLabels}<text x="14" y="${top+plotH/2}" transform="rotate(-90 14 ${top+plotH/2})" text-anchor="middle" font-size="10" fill="#718076">Quantity (kg)</text></svg></div>`;
+ })();
+
+ // 5. Table Rows Assembly
  const groupHead=`<tr><th rowspan="2">Location</th><th rowspan="2">Field Assistant</th><th rowspan="2">Acres</th><th colspan="${visibleGrades.length+1}">Quantity (kg)</th><th colspan="${visibleGrades.length}">Share of Total</th><th rowspan="2">Yield<br>(t/acre)</th></tr><tr>${visibleGrades.map(g=>`<th class="grade-head ${g==='60+'?'g60':g==='30+'?'g30':g==='-30'?'gm30':'extra'}">${g}</th>`).join("")}<th class="total-head">Total</th>${visibleGrades.map(g=>`<th class="grade-head ${g==='60+'?'g60':g==='30+'?'g30':g==='-30'?'gm30':'extra'}">${g} %</th>`).join("")}</tr>`;
  const locations=[...new Set(all.filter(x=>x.type==='fa'||x.type==='subtotal').map(x=>x.location).filter(x=>x&&x!=='Combined'))];
  let body='';
  for(const loc of locations){
-   const group=all.filter(x=>x.location===loc && x.type!=='combined');
-   const regular=group.filter(x=>x.type==='fa'),subtotal=group.find(x=>x.type==='subtotal');
-   const rows=[...regular,...(subtotal?[subtotal]:[])];
-   rows.forEach((x,i)=>{
-    const isTotal=x.type==='subtotal';
-    let cells='';
-    if(i===0)cells+=`<td class="location-cell" rowspan="${rows.length}"><span class="pin">●</span>${esc(loc)}</td>`;
-    cells+=`<td class="fa-cell ${isTotal?'subtotal-name':''}">${isTotal?'Σ ':''}${esc(x.name)}</td><td>${fmt(x.acres)}</td>`;
-    cells+=visibleGrades.map(g=>`<td class="qty-${g.replace(/[^a-z0-9]/gi,'').toLowerCase()}">${fmt(x[qtyKey[g]])}</td>`).join('');
-    cells+=`<td class="strong-col">${fmt(x.total)}</td>`;
-    cells+=visibleGrades.map(g=>`<td>${pct(x[pctKey[g]])}</td>`).join('');
-    cells+=`<td class="yield-cell">${fmt(x.yield)}</td>`;
-    body+=`<tr class="${isTotal?'subtotal-row':''}">${cells}</tr>`;
-   });
+  const group=all.filter(x=>x.location===loc && x.type!=='combined');
+  const regular=group.filter(x=>x.type==='fa'),subtotal=group.find(x=>x.type==='subtotal');
+  const rows=[...regular,...(subtotal?[subtotal]:[])];
+  rows.forEach((x,i)=>{
+   const isTotal=x.type==='subtotal';
+   let cells='';
+   if(i===0)cells+=`<td class="location-cell" rowspan="${rows.length}"><span class="pin">●</span>${esc(loc)}</td>`;
+   cells+=`<td class="fa-cell ${isTotal?'subtotal-name':''}">${isTotal?'Σ ':''}${esc(x.name)}</td><td>${fmt(x.acres)}</td>`;
+   cells+=visibleGrades.map(g=>`<td class="qty-${g.replace(/[^a-z0-9]/gi,'').toLowerCase()}">${fmt(x[qtyKey[g]])}</td>`).join('');
+   cells+=`<td class="strong-col">${fmt(x.total)}</td>`;
+   cells+=visibleGrades.map(g=>`<td>${pct(x[pctKey[g]])}</td>`).join('');
+   cells+=`<td class="yield-cell">${fmt(x.yield)}</td>`;
+   body+=`<tr class="${isTotal?'subtotal-row':''}">${cells}</tr>`;
+  });
  }
  if(combined && combined.type==='combined'){
   let cells=`<td class="combined-label" colspan="3">COMBINED TOTAL</td>`;
@@ -169,12 +148,19 @@ function dashboard(){
   cells+=`<td>${fmt(combined.yield)}</td>`;
   body+=`<tr class="combined-row">${cells}</tr>`;
  }
+
  const month=S.month||"Current season";
  $("season-label").textContent=month;
+
+ // 6. Inject Full Dashboard View
  $("dash-content").innerHTML=`<div class="kpi-grid">${kpis}</div>
+ <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin:20px 0">
+  <article style="${chartCardStyle}"><h3 style="margin:0 0 4px;color:#234b32;font-size:15px;font-weight:700">FA Yield Leaderboard</h3><p style="margin:0 0 10px;color:#718076;font-size:11px">Tons harvested per acre vs. season average</p>${yieldChart}</article>
+  <article style="${chartCardStyle}"><h3 style="margin:0 0 4px;color:#234b32;font-size:15px;font-weight:700">Regional Quality Mix</h3><p style="margin:0 0 10px;color:#718076;font-size:11px">Grade percentage share: Chelur vs. Hoskere</p>${qualityChart}</article>
+  <article style="${chartCardStyle}"><h3 style="margin:0 0 4px;color:#234b32;font-size:15px;font-weight:700">Daily Purchase Trend</h3><p style="margin:0 0 10px;color:#718076;font-size:11px">Combined procurement volume across all dates</p>${trendChart}</article>
+ </div>
  <section class="report-card"><div class="report-heading"><div><div class="eyebrow">FIELD PERFORMANCE</div><h2>FA-wise tonnage summary</h2><p>Harvest grading and yield across Chelur and Hoskere</p></div><div class="live-tag"><i></i> Live spreadsheet data</div></div>
  <div class="table-shell"><table class="summary-table"><thead>${groupHead}</thead><tbody>${body}</tbody></table></div>
  <div class="report-foot"><span>Source: FA Wise Summary · ${esc(month)}</span><span>A1 and B2 appear automatically when quantities are recorded.</span></div>
  <button class="btn print-btn" onclick="print()">Print / Save PDF</button></section>`;
 }
-document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-v]").forEach(x=>x.classList.toggle("active",x===b));["dashboard","fruit","crop"].forEach(id=>$(id).classList.toggle("hidden",b.dataset.v!==id));window.scrollTo({top:0,behavior:"smooth"})});$("ffa").onchange=()=>{farmers();fruit()};$("ffarmer").onchange=fruit;$("fsearch").oninput=fruit;$("carea").onchange=()=>{populateCropFAs();crop()};$("cfa").onchange=crop;$("csearch").oninput=crop;start();
