@@ -15,10 +15,67 @@
 @media(max-width:1250px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.content{padding:18px}}
 @media(max-width:760px){.app-shell{display:block;padding-bottom:68px}.sidebar{position:fixed;z-index:30;top:auto;bottom:0;left:0;right:0;height:64px;min-height:0;padding:5px 8px;background:#063d2b;display:block;overflow:visible}.brand,.side-bottom{display:none}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:0}.nav-item{justify-content:center;flex-direction:column;gap:1px;padding:5px 2px;border-radius:8px;font-size:10px}.nav-item .nav-icon{font-size:18px;width:auto}.hero{height:158px;padding:22px 18px;background-position:38% center}.hero h1{font-size:25px;max-width:75%}.hero p{font-size:13px;max-width:75%}.season-pill{top:12px;right:12px;font-size:10px;padding:7px 9px}.status-line{left:18px;bottom:8px}.content{padding:13px 11px}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.kpi{min-height:79px;padding:10px 8px;gap:8px;border-radius:12px}.kpi-icon{width:32px;height:32px;flex-basis:32px;font-size:20px;border-radius:9px}.kpi-label{font-size:10px}.kpi-value{font-size:17px}.kpi-value small{font-size:10px}.report-card{padding:12px;border-radius:14px}.report-heading{align-items:flex-start;flex-direction:column;margin-bottom:12px}.report-heading h2{font-size:17px}.live-tag{font-size:10px}.report-foot{font-size:10px}.grid{grid-template-columns:repeat(2,1fr)}}
 @media print{.sidebar,.hero,.print-btn{display:none!important}.app-shell{display:block}.content{padding:0}.report-card{box-shadow:none;border:0;padding:0}.table-shell{overflow:visible}.summary-table{min-width:0;font-size:8px}.summary-table th,.summary-table td{padding:5px 3px}.kpi-grid{grid-template-columns:repeat(3,1fr)}body{background:#fff}}
+
+/* Fruit Purchases – farmer statement layout */
+.fruit-hero{min-height:116px;border-radius:17px;overflow:hidden;position:relative;display:flex;align-items:center;padding:22px 26px;margin-bottom:15px;color:#fff;background:linear-gradient(90deg,rgba(4,48,32,.97),rgba(5,70,42,.78) 52%,rgba(5,70,42,.14)),url('gherkin-banner.png') center 44%/cover;box-shadow:0 7px 22px #123c2517}
+.fruit-hero h1{font-size:clamp(24px,2.5vw,32px);margin:0 0 4px;font-weight:900;letter-spacing:-.6px}
+.fruit-hero p{margin:0;color:#e2f1e7;font-size:14px}
+.fruit-season{position:absolute;right:18px;top:18px;padding:8px 12px;border:1px solid #ffffff80;border-radius:99px;background:#073e2bdc;font-size:11px;font-weight:800}
+.fruit-filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;background:#fff;border:1px solid #dce6de;border-radius:15px;padding:14px 16px;margin-bottom:15px;box-shadow:0 4px 16px #153d2608}
+.fruit-filters .field{margin:0}.fruit-filters label{font-size:10px;letter-spacing:.8px}.fruit-filters select,.fruit-filters input{height:43px;border-color:#cbd8cf;border-radius:10px}
+.farmer-statement{background:transparent;border:0;padding:0;margin:0 0 18px;box-shadow:none}
+.farmer-identity{display:flex;align-items:center;gap:15px;flex-wrap:wrap;padding:13px 17px;border:1px solid #d5e7d9;border-radius:13px;background:linear-gradient(105deg,#edf7ef,#f8fbf8);margin-bottom:13px}
+.farmer-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#d8efdc;color:#17683a;font-size:21px;flex:0 0 auto}
+.farmer-name{font-size:21px;font-weight:900;letter-spacing:-.4px;color:#103d29}
+.farmer-meta{display:flex;align-items:center;gap:8px;color:#53665a;font-size:12px;padding-left:15px;border-left:1px solid #b9cdbf}
+.farmer-meta b{color:#213c2c}
+.fruit-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:17px}
+.fruit-kpi{min-height:83px;border-radius:13px;border:1px solid #d9e6dc;padding:12px 14px;display:flex;align-items:center;gap:12px;background:#f0f7f1}
+.fruit-kpi:nth-child(2){background:#f5f8ed;border-color:#e0e8cf}
+.fruit-kpi:nth-child(3){background:#eaf4fc;border-color:#d2e6f8}
+.fruit-kpi:nth-child(4){background:#f4effb;border-color:#e5d9f3}
+.fruit-kpi-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:50%;background:#ffffffb8;font-size:22px;flex:0 0 auto}
+.fruit-kpi small{display:block;color:#596a60;font-size:11px;font-weight:700;margin-bottom:3px}
+.fruit-kpi strong{display:block;color:#142d20;font-size:clamp(18px,1.7vw,24px);font-weight:900;letter-spacing:-.4px;white-space:nowrap}
+.fruit-subhead{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:3px 2px 10px}
+.fruit-subhead h3{margin:0;color:#123f2b;font-size:19px;font-weight:900}
+.fruit-subhead p{margin:0;color:#78857c;font-size:11px}
+.grade-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-bottom:17px}
+.grade-card{border:1px solid #d8e3da;border-radius:12px;overflow:hidden;background:#fff}
+.grade-card-head{padding:7px 10px;text-align:center;font-size:16px;font-weight:900;color:#17462b;background:#e4f2df}
+.grade-card:nth-child(2) .grade-card-head{background:#e9f3df}
+.grade-card:nth-child(3) .grade-card-head{background:#fff0c9;color:#76500a}
+.grade-card:nth-child(4) .grade-card-head{background:#ffe4cf;color:#874516}
+.grade-card:nth-child(5) .grade-card-head{background:#f9dfe1;color:#8c2935}
+.grade-card-body{display:grid;grid-template-columns:1fr 1fr;text-align:center;padding:9px 5px;font-size:13px;font-weight:850;color:#1c2c21}
+.grade-card-body span+span{border-left:1px solid #d6dfd8}
+.grade-card-body small{display:block;color:#738076;font-size:9px;font-weight:700;margin-top:2px}
+.purchase-card{background:#fff;border:1px solid #d7e1d9;border-radius:16px;padding:16px;box-shadow:0 5px 20px #123c2510}
+.purchase-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 3px 12px}
+.purchase-card-heading h3{margin:0;color:#123f2b;font-size:20px;font-weight:900}
+.purchase-card-heading p{margin:3px 0 0;color:#68776e;font-size:12px}
+.history-wrap{overflow:auto;border:1px solid #cbd8cf;border-radius:11px}
+.history-table{border-collapse:separate;border-spacing:0;width:100%;min-width:1120px;font-size:11px;text-align:center}
+.history-table th,.history-table td{padding:9px 8px;border-right:1px solid #d8e1da;border-bottom:1px solid #d8e1da;white-space:nowrap;text-align:center}
+.history-table th:last-child,.history-table td:last-child{border-right:0}
+.history-table thead th{background:#075035;color:#fff;font-weight:850;position:sticky;top:0}
+.history-table tbody tr:nth-child(even){background:#f4f8f5}
+.history-table tbody td{color:#29372d;font-weight:550}
+.history-table .sum-qty,.history-table .sum-money{font-weight:900;color:#124d82;background:#edf5fb}
+.history-table .money-total{font-weight:900;color:#123f2b}
+.history-table tfoot td{background:#e4f2e6;color:#143d27;font-weight:900;border-top:2px solid #8dbb98}
+.history-table tfoot td:first-child{border-bottom-left-radius:9px}
+.history-table tfoot td:last-child{border-bottom-right-radius:9px}
+.fruit-print{margin-top:13px;border:0;border-radius:10px;background:#0b5538;color:#fff;padding:12px 18px;font-weight:850;cursor:pointer;width:100%}
+.fruit-empty{padding:28px;text-align:center;color:#64746a;background:#fff;border:1px dashed #cbd8cf;border-radius:14px}
+@media(max-width:1000px){.fruit-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.grade-cards{grid-template-columns:repeat(5,minmax(115px,1fr));overflow-x:auto;padding-bottom:3px}}
+@media(max-width:700px){.fruit-hero{min-height:108px;padding:18px}.fruit-season{top:10px;right:10px;font-size:9px}.fruit-hero h1{font-size:24px;max-width:70%}.fruit-hero p{font-size:12px;max-width:75%}.fruit-filters{grid-template-columns:1fr;gap:10px;padding:12px}.farmer-identity{gap:8px;padding:11px}.farmer-name{font-size:18px}.farmer-meta{padding-left:0;border-left:0;width:100%}.fruit-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fruit-kpi{padding:10px 9px;gap:8px;min-height:74px}.fruit-kpi-icon{width:31px;height:31px;font-size:17px}.fruit-kpi strong{font-size:17px}.fruit-kpi small{font-size:9px}.grade-cards{grid-template-columns:repeat(5,118px)}.purchase-card{padding:11px}.purchase-card-heading h3{font-size:17px}}
+@media print{.fruit-hero,.fruit-filters,.sidebar,.fruit-print{display:none!important}.farmer-identity{background:#fff}.purchase-card{box-shadow:none;border:0;padding:0}.history-wrap{overflow:visible}.history-table{min-width:0;font-size:8px}.history-table th,.history-table td{padding:4px 2px}}
+
 </style></head><body>
 <div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">🌱</div><div class="brand-name">CHELUR</div><div class="brand-sub">CROP PORTAL</div></div><nav class="nav"><button class="nav-item active" data-v="dashboard"><span class="nav-icon">⌂</span><span>Dashboard</span></button><button class="nav-item" data-v="fruit"><span class="nav-icon">♧</span><span>Fruit Purchases</span></button><button class="nav-item" data-v="crop"><span class="nav-icon">▥</span><span>Crop Analysis</span></button></nav><div class="side-bottom">INTERNAL FIELD OPERATIONS<br>Current-season reporting portal</div></aside>
 <div class="main"><header class="hero"><div class="hero-content"><h1>Field Assistant Summary</h1><p>FA Wise Tonnage Details of Chelur and Hoskere</p></div><div class="season-pill">▦ &nbsp;<span id="season-label">September 2026</span></div><div id="status" class="status-line">Connecting to live spreadsheets…</div></header>
 <main class="content"><section id="dashboard" class="section"><div id="dash-content"><div class="panel">Loading seasonal summary…</div></div></section>
-<section id="fruit" class="section hidden"><div class="panel filters"><h3>Find purchase records</h3><div class="field"><label>FIELD ASSISTANT</label><select id="ffa"><option value="">All Field Assistants</option></select></div><div class="field"><label>FARMER</label><select id="ffarmer"><option value="">All Farmers</option></select></div><div class="field"><label>SEARCH ACCOUNT NUMBER</label><input id="fsearch" placeholder="Farmer account number"></div></div><div id="fout"></div></section>
+<section id="fruit" class="section hidden"><div class="fruit-hero"><div><h1>Fruit Purchases</h1><p>Farmer-wise procurement and payment records</p></div><div class="fruit-season">▦ &nbsp; September 2026 · Live data</div></div><div class="fruit-filters"><div class="field"><label>FIELD ASSISTANT</label><select id="ffa"><option value="">All Field Assistants</option></select></div><div class="field"><label>FARMER</label><select id="ffarmer"><option value="">All Farmers</option></select></div><div class="field"><label>SEARCH ACCOUNT NUMBER</label><input id="fsearch" placeholder="Farmer account number"></div></div><div id="fout"></div></section>
 <section id="crop" class="section hidden"><div class="panel filters"><h3>Crop analysis</h3><div class="field"><label>FILTER BY FIELD ASSISTANT</label><select id="cfa"><option value="">All Field Assistants</option></select></div><div class="field"><label>SEARCH FARMER</label><input id="csearch" placeholder="Code or farmer name"></div></div><div id="cout"></div></section></main></div></div>
 <script src="app.js"></script><script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));</script></body></html>
