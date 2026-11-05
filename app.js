@@ -16,6 +16,53 @@ function fruit(){
   let faQty=sum(rows,x=>x.qty.total),faAmount=sum(rows,x=>x.amount.total),faReceipts=rows.length,faAvg=faQty?faAmount/faQty:0;
   let faGradeQty={},faGradeAmount={};grades.forEach(g=>{faGradeQty[g]=sum(rows,x=>x.qty[g]);faGradeAmount[g]=sum(rows,x=>x.amount[g])});
   let faGradeCards=grades.map(g=>`<article class="grade-card"><div class="grade-card-head">${g}</div><div class="grade-card-body"><span>${kg(faGradeQty[g])}<small>QUANTITY</small></span><span>${money(faGradeAmount[g])}<small>AMOUNT</small></span></div></article>`).join("");
+
+  // Chart helpers are local to the FA view. The rest of the portal is unchanged.
+  const chartColors=["#1c7c4a","#83b85a","#e3b341","#e47b3c","#bd5360"];
+  const chartCardStyle="background:#fff;border:1px solid #e3eae4;border-radius:14px;padding:18px;min-width:0;box-shadow:0 3px 12px rgba(25,60,35,.05)";
+
+  const donut=(values,unit)=>{
+    const total=values.reduce((a,b)=>a+b.value,0);
+    let angle=0;
+    const segments=values.map(v=>{
+      const from=angle;
+      angle+=total?(v.value/total)*100:0;
+      return `${v.color} ${from}% ${angle}%`;
+    }).join(",");
+    const gradient=total?`conic-gradient(${segments})`:"#edf1ed";
+    const legend=values.map(v=>`<div style="display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12px"><i style="width:10px;height:10px;border-radius:3px;background:${v.color};flex:none"></i><span style="font-weight:700;min-width:24px">${v.name}</span><b style="margin-left:auto;text-align:right">${unit==="kg"?kg(v.value):money(v.value)}</b></div>`).join("");
+    return `<div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:10px 2px"><div role="img" aria-label="${unit==="kg"?"Quantity":"Earnings"} distribution by grade" style="width:154px;height:154px;flex:none;border-radius:50%;background:${gradient};display:grid;place-items:center"><div style="width:94px;height:94px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 1px 5px #00000012"><strong style="font-size:19px;color:#193f2a">${total?Math.round(total).toLocaleString("en-IN"):"0"}</strong><small style="color:#718076;font-size:10px;letter-spacing:1px">${unit.toUpperCase()}</small></div></div><div style="flex:1;min-width:130px">${legend||'<small style="color:#7b887e">No grade data available</small>'}</div></div>`;
+  };
+
+  const qtySlices=grades.map((g,i)=>({name:g,value:faGradeQty[g],color:chartColors[i]})).filter(x=>x.value>0);
+  const amtSlices=grades.map((g,i)=>({name:g,value:faGradeAmount[g],color:chartColors[i]})).filter(x=>x.value>0);
+
+  const dayMap=new Map();
+  rows.forEach(x=>{const key=String(x.date||"");dayMap.set(key,(dayMap.get(key)||0)+Number(x.qty.total||0));});
+  const dayRows=[...dayMap.entries()].map(([date,value])=>({date,value,stamp:dateValue(date)})).sort((a,b)=>a.stamp-b.stamp);
+
+  const trend=(()=>{
+    if(!dayRows.length)return '<p style="color:#718076">No daily purchase data available.</p>';
+    const w=760,h=250,left=58,right=18,top=18,bottom=48,plotW=w-left-right,plotH=h-top-bottom;
+    const max=Math.max(...dayRows.map(x=>x.value),1);
+    const niceMax=Math.ceil(max/5)*5||max;
+    const x=i=>left+(dayRows.length===1?plotW/2:i*plotW/(dayRows.length-1));
+    const y=v=>top+plotH-(v/niceMax)*plotH;
+    const pts=dayRows.map((d,i)=>`${x(i)},${y(d.value)}`).join(" ");
+    const area=`${x(0)},${top+plotH} ${pts} ${x(dayRows.length-1)},${top+plotH}`;
+
+    const grid=[0,1,2,3,4].map(i=>{
+      const val=niceMax*i/4,yy=y(val);
+      return `<line x1="${left}" y1="${yy}" x2="${w-right}" y2="${yy}" stroke="#e8eee9" stroke-width="1"/><text x="${left-9}" y="${yy+4}" text-anchor="end" font-size="11" fill="#718076">${Math.round(val).toLocaleString("en-IN")}</text>`;
+    }).join("");
+
+    const labels=dayRows.length===1?[0]:[...new Set([0,Math.floor((dayRows.length-1)/2),dayRows.length-1])];
+    const xLabels=labels.map(i=>`<text x="${x(i)}" y="${h-15}" text-anchor="${i===0?"start":i===dayRows.length-1?"end":"middle"}" font-size="11" fill="#718076">${esc(dayRows[i].date)}</text>`).join("");
+    const dots=dayRows.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.value)}" r="4.5" fill="#fff" stroke="#187346" stroke-width="2"><title>${esc(d.date)}: ${kg(d.value)}</title></circle>`).join("");
+
+    return `<div style="width:100%;overflow-x:auto"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Daily purchased quantity trend" style="width:100%;min-width:520px;height:auto;display:block">${grid}<polygon points="${area}" fill="#3b9a65" opacity=".12"/><polyline points="${pts}" fill="none" stroke="#187346" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots}${xLabels}<text x="14" y="${top+plotH/2}" transform="rotate(-90 14 ${top+plotH/2})" text-anchor="middle" font-size="11" fill="#718076">Quantity (kg)</text></svg></div><div style="font-size:11px;color:#718076;margin-top:4px">Hover over a point to see its exact date and quantity · ${dayRows.length} purchase dates</div>`;
+  })();
+
   faOverview=`<section class="fa-performance">
    <div class="fa-performance-head"><div><div class="eyebrow">FIELD ASSISTANT PERFORMANCE</div><h2>${esc(fa)}</h2><p>${esc(rows[0]?.fa||fa)} · ${people.length} farmers in current-season purchase records</p></div><span class="live-tag"><i></i>Live purchase data</span></div>
    <div class="fruit-kpis">
@@ -26,9 +73,15 @@ function fruit(){
    </div>
    <div class="fruit-subhead"><h3>FA Grade-wise Performance</h3><p>${faReceipts} purchase receipts across ${people.length} farmers</p></div>
    <div class="grade-cards">${faGradeCards}</div>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin:20px 0">
+    <article style="${chartCardStyle}"><h3 style="margin:0 0 4px;color:#234b32;font-size:16px">Grade Mix · Quantity</h3><p style="margin:0;color:#718076;font-size:12px">Share of total purchased volume</p>${donut(qtySlices,"kg")}</article>
+    <article style="${chartCardStyle}"><h3 style="margin:0 0 4px;color:#234b32;font-size:16px">Grade Mix · Earnings</h3><p style="margin:0;color:#718076;font-size:12px">Share of total farmer payments</p>${donut(amtSlices,"₹")}</article>
+   </div>
+   <article style="${chartCardStyle};margin:16px 0"><h3 style="margin:0 0 4px;color:#234b32;font-size:16px">Daily Purchase Trend</h3><p style="margin:0 0 12px;color:#718076;font-size:12px">Total quantity purchased each day</p>${trend}</article>
    <div class="farmer-list-heading"><h3>Farmers under ${esc(fa)}</h3><p>Individual purchase statements appear below</p></div>
   </section>`;
  }
+
  $("fout").innerHTML=faOverview+people.map(p=>{
   let r=rows.filter(x=>String(x.code)===String(p.code)),q={},v={};
   grades.forEach(g=>{q[g]=sum(r,x=>x.qty[g]);v[g]=sum(r,x=>x.amount[g])});
