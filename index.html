@@ -76,6 +76,15 @@
 #crop .filters{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:12px;align-items:end}
 #crop .filters h3{grid-column:1/-1;margin-bottom:0}
 @media(max-width:700px){#crop .filters{grid-template-columns:1fr}}
+
+.fa-performance{background:#fff;border:1px solid #d7e4d9;border-radius:16px;padding:17px;margin:0 0 18px;box-shadow:0 5px 20px #123c250b}
+.fa-performance-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px}
+.fa-performance-head h2{margin:2px 0 3px;color:#103f2b;font-size:24px;font-weight:950}
+.fa-performance-head p,.farmer-list-heading p{margin:0;color:#718077;font-size:11px}
+.fa-performance .fruit-kpis{margin-bottom:15px}
+.farmer-list-heading{border-top:1px solid #e1e9e3;padding-top:14px;margin-top:4px;display:flex;align-items:end;justify-content:space-between;gap:10px}
+.farmer-list-heading h3{margin:0;color:#123f2b;font-size:19px;font-weight:900}
+@media(max-width:700px){.fa-performance{padding:12px}.fa-performance-head{display:block}.fa-performance-head .live-tag{display:inline-flex;margin-top:8px}.farmer-list-heading{display:block}.farmer-list-heading p{margin-top:3px}}
 </style></head><body>
 <div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">🌱</div><div class="brand-name">CHELUR</div><div class="brand-sub">CROP PORTAL</div></div><nav class="nav"><button class="nav-item active" data-v="dashboard"><span class="nav-icon">⌂</span><span>Dashboard</span></button><button class="nav-item" data-v="fruit"><span class="nav-icon">♧</span><span>Fruit Purchases</span></button><button class="nav-item" data-v="crop"><span class="nav-icon">▥</span><span>Crop Analysis</span></button></nav><div class="side-bottom">INTERNAL FIELD OPERATIONS<br>Current-season reporting portal</div></aside>
 <div class="main"><header class="hero"><div class="hero-content"><h1>Field Assistant Summary</h1><p>FA Wise Tonnage Details of Chelur and Hoskere</p></div><div class="season-pill">▦ &nbsp;<span id="season-label">September 2026</span></div><div id="status" class="status-line">Connecting to live spreadsheets…</div></header>
