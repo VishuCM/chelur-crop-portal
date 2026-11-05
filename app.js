@@ -16,58 +16,14 @@ function fruit(){
   let faQty=sum(rows,x=>x.qty.total),faAmount=sum(rows,x=>x.amount.total),faReceipts=rows.length,faAvg=faQty?faAmount/faQty:0;
   let faGradeQty={},faGradeAmount={};grades.forEach(g=>{faGradeQty[g]=sum(rows,x=>x.qty[g]);faGradeAmount[g]=sum(rows,x=>x.amount[g])});
   let faGradeCards=grades.map(g=>`<article class="grade-card"><div class="grade-card-head">${g}</div><div class="grade-card-body"><span>${kg(faGradeQty[g])}<small>QUANTITY</small></span><span>${money(faGradeAmount[g])}<small>AMOUNT</small></span></div></article>`).join("");
-
-  // One shared grade colour map is used by both chart slices and their legends.
-  const gradeColors={A1:"#1c7c4a",B2:"#83b85a",C3:"#e3b341",D4:"#e47b3c",E5:"#bd5360"};
-  const donut=(values,unit)=>{let total=values.reduce((a,b)=>a+b.value,0),angle=0,stops=values.map(v=>{let start=angle;angle+=total?v.value/total*100:0;return `${gradeColors[v.name]} ${start}% ${angle}%`}).join(",");return `<div class="donut" style="background:conic-gradient(${stops||"#e8eee9 0 100%"})"><div class="donut-hole"><strong>${total?Math.round(total).toLocaleString("en-IN"):"0"}</strong><small>${unit}</small></div></div>`};
-  const qtySlices=grades.map(g=>({name:g,value:faGradeQty[g]})).filter(x=>x.value>0);
-  const amtSlices=grades.map(g=>({name:g,value:faGradeAmount[g]})).filter(x=>x.value>0);
-  const legend=(values,unit)=>`<div class="chart-legend">${values.map(v=>`<div><i style="background:${gradeColors[v.name]}"></i><span>${v.name}</span><b>${unit==="KG"?kg(v.value):money(v.value)}</b></div>`).join("")||'<small>No grade data available</small>'}</div>`;
-
-  // Combine records by calendar date and show labelled axes and values.
-  const dayMap=new Map();
-  rows.forEach(x=>{
-    let key=String(x.date||"").trim();
-    let stamp=dateValue(key);
-    let dateKey=stamp?new Date(stamp).toISOString().slice(0,10):key;
-    let existing=dayMap.get(dateKey);
-    dayMap.set(dateKey,{date:key,stamp:stamp,value:(existing?.value||0)+Number(x.qty.total||0)});
-  });
-  const dayRows=[...dayMap.values()].sort((a,b)=>a.stamp-b.stamp);
-  const trend=(()=>{
-    if(!dayRows.length)return '<div class="chart-empty">No daily purchase data</div>';
-    const w=Math.max(900,dayRows.length*58),h=340,left=78,right=30,top=36,bottom=82;
-    const plotW=w-left-right,plotH=h-top-bottom;
-    const max=Math.max(...dayRows.map(x=>x.value),1);
-    const step=max/4,yAt=v=>top+plotH-(v/max)*plotH;
-    const xAt=i=>left+i*plotW/Math.max(dayRows.length-1,1);
-    const pts=dayRows.map((x,i)=>`${xAt(i)},${yAt(x.value)}`);
-    const tickDates=new Set([0,dayRows.length-1,...Array.from({length:5},(_,i)=>Math.round(i*(dayRows.length-1)/5))]);
-    let grid=[0,1,2,3,4].map(i=>{
-      let val=step*i,y=yAt(val);
-      return `<line x1="${left}" y1="${y}" x2="${w-right}" y2="${y}" stroke="#e5eee7"/><text x="${left-12}" y="${y+4}" text-anchor="end" font-size="12" fill="#52665a">${Math.round(val).toLocaleString("en-IN")}</text>`;
-    }).join("");
-    let points=dayRows.map((d,i)=>{
-      let x=xAt(i),y=yAt(d.value);
-      let label=(dayRows.length<=20||i%2===0)?`<text x="${x}" y="${y-13}" text-anchor="middle" font-size="11" font-weight="700" fill="#145b35">${Math.round(d.value).toLocaleString("en-IN")}</text>`:"";
-      return `<circle cx="${x}" cy="${y}" r="5" fill="#fff" stroke="#187346" stroke-width="2.5"><title>${esc(d.date)} · ${kg(d.value)}</title></circle>${label}`;
-    }).join("");
-    let dates=dayRows.map((d,i)=>tickDates.has(i)?`<text x="${xAt(i)}" y="${h-43}" text-anchor="middle" font-size="11" fill="#52665a">${esc(d.date)}</text>`:"").join("");
-    return `<div class="trend-axis-label">Quantity purchased (kg)</div>
-    <div style="width:100%;overflow-x:auto">
-    <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Daily purchase trend showing quantity in kilograms by purchase date" style="width:100%;min-width:760px;height:auto;display:block">
-    <defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b9a65" stop-opacity=".25"/><stop offset="100%" stop-color="#3b9a65" stop-opacity="0"/></linearGradient></defs>
-    ${grid}
-    <polygon points="${left},${top+plotH} ${pts.join(" ")} ${w-right},${top+plotH}" fill="url(#trendFill)"/>
-    <polyline points="${pts.join(" ")}" fill="none" stroke="#187346" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    ${points}
-    <line x1="${left}" y1="${top+plotH}" x2="${w-right}" y2="${top+plotH}" stroke="#aebeb2"/>
-    ${dates}
-    <text x="${w/2}" y="${h-12}" text-anchor="middle" font-size="12" fill="#52665a">Purchase date</text>
-    </svg></div>
-    <div class="trend-foot">${dayRows.length} purchase dates · Values show daily quantity in kg · Hover over a point for its exact date and quantity</div>`;
-  })();
-
+  const chartColors=["#1c7c4a","#83b85a","#e3b341","#e47b3c","#bd5360"];
+  const donut=(values)=>{let total=values.reduce((a,b)=>a+b.value,0),angle=0,stops=values.map((v,i)=>{let start=angle;angle+=total?v.value/total*100:0;return `${chartColors[i]} ${start}% ${angle}%`}).join(",");return `<div class="donut" style="background:conic-gradient(${stops||"#e8eee9 0 100%"})"><div class="donut-hole"><strong>${total?Math.round(total).toLocaleString("en-IN"):"0"}</strong><small>${values===qtySlices?"KG":"₹"}</small></div></div>`};
+  const qtySlices=grades.map((g,i)=>({name:g,value:faGradeQty[g],color:chartColors[i]})).filter(x=>x.value>0);
+  const amtSlices=grades.map((g,i)=>({name:g,value:faGradeAmount[g],color:chartColors[i]})).filter(x=>x.value>0);
+  const legend=values=>`<div class="chart-legend">${values.map(v=>`<div><i style="background:${v.color}"></i><span>${v.name}</span><b>${values===qtySlices?kg(v.value):money(v.value)}</b></div>`).join("")||'<small>No grade data available</small>'}</div>`;
+  const dayMap=new Map();rows.forEach(x=>{let key=String(x.date||"");dayMap.set(key,(dayMap.get(key)||0)+Number(x.qty.total||0))});
+  const dayRows=[...dayMap.entries()].map(([date,value])=>({date,value,stamp:dateValue(date)})).sort((a,b)=>a.stamp-b.stamp);
+  const trend=(()=>{if(!dayRows.length)return '<div class="chart-empty">No daily purchase data</div>';let w=620,h=190,pad=24,max=Math.max(...dayRows.map(x=>x.value),1),pts=dayRows.map((x,i)=>`${pad+i*(w-2*pad)/Math.max(dayRows.length-1,1)},${h-pad-(x.value/max)*(h-2*pad)}`);return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Daily quantity purchased trend"><defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b9a65" stop-opacity=".28"/><stop offset="100%" stop-color="#3b9a65" stop-opacity="0"/></linearGradient></defs><polygon points="${pad},${h-pad} ${pts.join(" ")} ${w-pad},${h-pad}" fill="url(#trendFill)"/><polyline points="${pts.join(" ")}" fill="none" stroke="#187346" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${pts.map(pt=>{let [x,y]=pt.split(",");return `<circle cx="${x}" cy="${y}" r="4" fill="#fff" stroke="#187346" stroke-width="2"/>`}).join("")}</svg><div class="trend-foot"><span>${esc(dayRows[0].date)}</span><span>${dayRows.length} purchase dates</span><span>${esc(dayRows[dayRows.length-1].date)}</span></div>`})();
   const farmerRows=people.map(p=>{let pr=rows.filter(x=>String(x.code)===String(p.code)),qty=sum(pr,x=>x.qty.total),amt=sum(pr,x=>x.amount.total);return {p,qty,amt,count:pr.length,avg:qty?amt/qty:0}}).sort((a,b)=>b.qty-a.qty);
   const farmerTable=`<div class="fa-farmer-table-wrap"><table class="fa-farmer-table"><thead><tr><th>Farmer</th><th>Account</th><th>Receipts</th><th>Quantity</th><th>Earnings</th><th>Avg/kg</th></tr></thead><tbody>${farmerRows.map(x=>`<tr><td>${esc(x.p.farmer)}</td><td>${esc(x.p.code)}</td><td>${x.count}</td><td>${kg(x.qty)}</td><td>${money(x.amt)}</td><td>${money(x.avg)}</td></tr>`).join("")}</tbody></table></div>`;
   faOverview=`<section class="fa-performance">
@@ -81,8 +37,8 @@ function fruit(){
    <div class="fruit-subhead"><h3>FA Grade-wise Performance</h3><p>${faReceipts} purchase receipts across ${people.length} farmers</p></div>
    <div class="grade-cards">${faGradeCards}</div>
    <div class="fa-chart-grid">
-    <article class="fa-chart-card"><div class="fa-chart-title"><h3>Grade Mix · Quantity</h3><p>Share of total purchased volume</p></div><div class="donut-layout">${donut(qtySlices,"KG")}${legend(qtySlices,"KG")}</div></article>
-    <article class="fa-chart-card"><div class="fa-chart-title"><h3>Grade Mix · Earnings</h3><p>Share of total farmer payments</p></div><div class="donut-layout">${donut(amtSlices,"₹")}${legend(amtSlices,"₹")}</div></article>
+    <article class="fa-chart-card"><div class="fa-chart-title"><h3>Grade Mix · Quantity</h3><p>Share of total purchased volume</p></div><div class="donut-layout">${donut(qtySlices)}${legend(qtySlices)}</div></article>
+    <article class="fa-chart-card"><div class="fa-chart-title"><h3>Grade Mix · Earnings</h3><p>Share of total farmer payments</p></div><div class="donut-layout">${donut(amtSlices)}${legend(amtSlices)}</div></article>
    </div>
    <article class="fa-chart-card trend-card"><div class="fa-chart-title"><h3>Daily Purchase Trend</h3><p>Quantity purchased by date</p></div>${trend}</article>
    <div class="farmer-list-heading"><h3>Farmer Performance</h3><p>${people.length} farmers · ranked by quantity purchased</p></div>
@@ -185,3 +141,4 @@ function dashboard(){
  <div class="report-foot"><span>Source: FA Wise Summary · ${esc(month)}</span><span>A1 and B2 appear automatically when quantities are recorded.</span></div>
  <button class="btn print-btn" onclick="print()">Print / Save PDF</button></section>`;
 }
+document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-v]").forEach(x=>x.classList.toggle("active",x===b));["dashboard","fruit","crop"].forEach(id=>$(id).classList.toggle("hidden",b.dataset.v!==id));window.scrollTo({top:0,behavior:"smooth"})});$("ffa").onchange=()=>{farmers();fruit()};$("ffarmer").onchange=fruit;$("fsearch").oninput=fruit;$("carea").onchange=()=>{populateCropFAs();crop()};$("cfa").onchange=crop;$("csearch").oninput=crop;start();
