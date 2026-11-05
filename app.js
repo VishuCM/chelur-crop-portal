@@ -2,7 +2,7 @@ const API="https://script.google.com/macros/s/AKfycbw2zzARX3MqaXdP6WMTQRLamlyRpC
 function api(action){return new Promise((ok,no)=>{if(!API.startsWith("https://"))return no(Error("Add your Apps Script /exec URL in app.js"));let cb="cb"+Date.now()+Math.random().toString(36).slice(2),s=document.createElement("script"),t=setTimeout(()=>{delete window[cb];s.remove();no(Error("Data service timed out"))},20000);window[cb]=x=>{clearTimeout(t);delete window[cb];s.remove();ok(x)};s.onerror=()=>{clearTimeout(t);delete window[cb];no(Error("Cannot reach spreadsheet service"))};s.src=API+"?action="+action+"&callback="+cb;document.body.append(s)})}
 async function start(){try{$("status").textContent="Loading latest sheet data…";let [f,c,s]=await Promise.all([api("fruit"),api("crop"),api("summary")]);if(!f.ok||!c.ok||!s.ok)throw Error(f.error||c.error||s.error);F=f.data.rows;C=c.data.rows;S=s.data;
 const canonicalFA=name=>{const n=String(name||"").trim().toUpperCase().replace(/\s+/g," ");if(n==="LAVAKUMAR")return "LAVAKUMAR T S";if(n==="LOKESH")return "LOKESH R N";return String(name||"").trim()};
-F.forEach(x=>x.fa=canonicalFA(x.fa));C.forEach(x=>x.fa=canonicalFA(x.fa));let fas=[...new Set(F.map(x=>x.fa).concat(C.map(x=>x.fa)).filter(Boolean))].sort();["ffa","cfa"].forEach(id=>$(id).innerHTML='<option value="">All Field Assistants</option>'+fas.map(x=>`<option>${esc(x)}</option>`).join(""));farmers();fruit();crop();dashboard();$("status").textContent="Data loaded · refresh to check for new entries"}catch(e){$("status").textContent=e.message;$("fout").textContent=e.message}}
+F.forEach(x=>x.fa=canonicalFA(x.fa));C.forEach(x=>x.fa=canonicalFA(x.fa));let fas=[...new Set(F.map(x=>x.fa).concat(C.map(x=>x.fa)).filter(Boolean))].sort();$("ffa").innerHTML='<option value="">All Field Assistants</option>'+fas.map(x=>`<option>${esc(x)}</option>`).join("");populateCropFAs();farmers();fruit();crop();dashboard();$("status").textContent="Data loaded · refresh to check for new entries"}catch(e){$("status").textContent=e.message;$("fout").textContent=e.message}}
 function farmers(){let a=F.filter(x=>!$("ffa").value||x.fa===$("ffa").value),u=[...new Map(a.map(x=>[x.code,x])).values()];u.sort((a,b)=>{let an=Number(a.code),bn=Number(b.code);if(Number.isFinite(an)&&Number.isFinite(bn)&&an!==bn)return an-bn;return String(a.code).localeCompare(String(b.code),undefined,{numeric:true,sensitivity:"base"})});$("ffarmer").innerHTML='<option value="">All Farmers</option>'+u.map(x=>`<option value="${esc(x.code)}">${esc(x.code)} · ${esc(x.farmer)}</option>`).join("")}
 function fruit(){
  let fa=$("ffa").value,code=$("fsearch").value.trim()||$("ffarmer").value;
@@ -35,7 +35,23 @@ function fruit(){
   </article>`;
  }).join("");
 }
-function crop(){let fa=$("cfa").value,q=$("csearch").value.toLowerCase(),r=C.filter(x=>(!fa||x.fa===fa)&&(!q||x.code.toLowerCase().includes(q)||String(x.farmer).toLowerCase().includes(q)));if(!r.length){$("cout").innerHTML='<div class="panel">No crop records found.</div>';return}let acres=sum(r,x=>x.acres),qtyv=sum(r,x=>x.quantity),val=sum(r,x=>x.cropValue),cost=sum(r,x=>x.inputCost),bal=sum(r,x=>x.closingBalance);$("cout").innerHTML=`<div class="panel"><div class="grid"><div class="metric"><small>Farmers</small><b>${r.length}</b></div><div class="metric"><small>Total acres</small><b>${acres.toFixed(2)}</b></div><div class="metric"><small>Quantity received</small><b>${kg(qtyv)}</b></div><div class="metric"><small>Crop value</small><b>${money(val)}</b></div></div><div class="tablewrap"><table><tr><th>FA</th><th>Code</th><th>Farmer</th><th>Father</th><th>Village</th><th>DOS</th><th>Acres</th><th>DOFH</th><th>DOLH</th><th>THD</th><th>Qty</th><th>Crop value</th><th>Input cost</th><th>Closing balance</th></tr>${r.map(x=>`<tr><td>${esc(x.fa)}</td><td>${esc(x.code)}</td><td>${esc(x.farmer)}</td><td>${esc(x.father)}</td><td>${esc(x.village)}</td><td>${esc(x.dos)}</td><td>${x.acres}</td><td>${esc(x.dofh)}</td><td>${esc(x.dolh)}</td><td>${x.thd}</td><td>${x.quantity}</td><td>${money(x.cropValue)}</td><td>${money(x.inputCost)}</td><td>${money(x.closingBalance)}</td></tr>`).join("")}<tr class="total"><td colspan="6">TOTAL</td><td>${acres.toFixed(2)}</td><td colspan="3"></td><td>${qtyv}</td><td>${money(val)}</td><td>${money(cost)}</td><td>${money(bal)}</td></tr></table></div><button class="btn" onclick="print()">Print / Save PDF</button></div>`}
+
+const FA_AREA={
+ "LAVAKUMAR T S":"CHELUR",
+ "MANJAPPA":"CHELUR",
+ "UMESH S":"CHELUR",
+ "LOKESH R N":"CHELUR",
+ "SHANTHAPPA":"HOSKERE",
+ "ASHOK N G":"HOSKERE",
+ "ULLAS K S":"HOSKERE"
+};
+function populateCropFAs(){
+ const area=$("carea").value, current=$("cfa").value;
+ const names=[...new Set(C.map(x=>x.fa).filter(n=>n&&(!area||FA_AREA[n]===area)))].sort((a,b)=>a.localeCompare(b));
+ $("cfa").innerHTML='<option value="">All Field Assistants</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+ if(names.includes(current))$("cfa").value=current;
+}
+function crop(){let area=$("carea").value,fa=$("cfa").value,q=$("csearch").value.toLowerCase(),r=C.filter(x=>(!area||FA_AREA[x.fa]===area)&&(!fa||x.fa===fa)&&(!q||String(x.code).toLowerCase().includes(q)||String(x.farmer).toLowerCase().includes(q)));if(!r.length){$("cout").innerHTML='<div class="panel">No crop records found.</div>';return}let acres=sum(r,x=>x.acres),qtyv=sum(r,x=>x.quantity),val=sum(r,x=>x.cropValue),cost=sum(r,x=>x.inputCost),bal=sum(r,x=>x.closingBalance);$("cout").innerHTML=`<div class="panel"><div class="grid"><div class="metric"><small>Farmers</small><b>${r.length}</b></div><div class="metric"><small>Total acres</small><b>${acres.toFixed(2)}</b></div><div class="metric"><small>Quantity received</small><b>${kg(qtyv)}</b></div><div class="metric"><small>Crop value</small><b>${money(val)}</b></div></div><div class="tablewrap"><table><tr><th>FA</th><th>Code</th><th>Farmer</th><th>Father</th><th>Village</th><th>DOS</th><th>Acres</th><th>DOFH</th><th>DOLH</th><th>THD</th><th>Qty</th><th>Crop value</th><th>Input cost</th><th>Closing balance</th></tr>${r.map(x=>`<tr><td>${esc(x.fa)}</td><td>${esc(x.code)}</td><td>${esc(x.farmer)}</td><td>${esc(x.father)}</td><td>${esc(x.village)}</td><td>${esc(x.dos)}</td><td>${x.acres}</td><td>${esc(x.dofh)}</td><td>${esc(x.dolh)}</td><td>${x.thd}</td><td>${x.quantity}</td><td>${money(x.cropValue)}</td><td>${money(x.inputCost)}</td><td>${money(x.closingBalance)}</td></tr>`).join("")}<tr class="total"><td colspan="6">TOTAL</td><td>${acres.toFixed(2)}</td><td colspan="3"></td><td>${qtyv}</td><td>${money(val)}</td><td>${money(cost)}</td><td>${money(bal)}</td></tr></table></div><button class="btn" onclick="print()">Print / Save PDF</button></div>`}
 
 function dashboard(){
  if(!S)return;
@@ -90,4 +106,4 @@ function dashboard(){
  <div class="report-foot"><span>Source: FA Wise Summary · ${esc(month)}</span><span>A1 and B2 appear automatically when quantities are recorded.</span></div>
  <button class="btn print-btn" onclick="print()">Print / Save PDF</button></section>`;
 }
-document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-v]").forEach(x=>x.classList.toggle("active",x===b));["dashboard","fruit","crop"].forEach(id=>$(id).classList.toggle("hidden",b.dataset.v!==id));window.scrollTo({top:0,behavior:"smooth"})});$("ffa").onchange=()=>{farmers();fruit()};$("ffarmer").onchange=fruit;$("fsearch").oninput=fruit;$("cfa").onchange=crop;$("csearch").oninput=crop;start();
+document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-v]").forEach(x=>x.classList.toggle("active",x===b));["dashboard","fruit","crop"].forEach(id=>$(id).classList.toggle("hidden",b.dataset.v!==id));window.scrollTo({top:0,behavior:"smooth"})});$("ffa").onchange=()=>{farmers();fruit()};$("ffarmer").onchange=fruit;$("fsearch").oninput=fruit;$("carea").onchange=()=>{populateCropFAs();crop()};$("cfa").onchange=crop;$("csearch").oninput=crop;start();
