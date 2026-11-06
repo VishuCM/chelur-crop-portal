@@ -68,6 +68,76 @@ async function start() {
   }
 }
 
+const API = "https://script.google.com/macros/s/AKfycbw2zzARX3MqaXdP6WMTQRLamlyRpC6moKKTXijdXfwOml-TCp-xEnHO7qdhwm65ARmx/exec";
+let F = [], C = [], S = null;
+
+const $ = x => document.getElementById(x);
+const money = x => "₹" + Number(x || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const kg = x => Number(x || 0).toLocaleString("en-IN") + " kg";
+const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function sum(a, f) { return a.reduce((s, x) => s + Number(f(x) || 0), 0); }
+
+function api(action) {
+  return new Promise((ok, no) => {
+    if (!API.startsWith("https://")) return no(Error("Add your Apps Script /exec URL in app.js"));
+    let cb = "cb" + Date.now() + Math.random().toString(36).slice(2);
+    let s = document.createElement("script");
+    let t = setTimeout(() => {
+      delete window[cb];
+      s.remove();
+      no(Error("Data service timed out"));
+    }, 20000);
+    window[cb] = x => {
+      clearTimeout(t);
+      delete window[cb];
+      s.remove();
+      ok(x);
+    };
+    s.onerror = () => {
+      clearTimeout(t);
+      delete window[cb];
+      no(Error("Cannot reach spreadsheet service"));
+    };
+    s.src = API + "?action=" + action + "&callback=" + cb;
+    document.body.append(s);
+  });
+}
+
+async function start() {
+  try {
+    if ($("status")) $("status").textContent = "Loading latest sheet data…";
+    let [f, c, s] = await Promise.all([api("fruit"), api("crop"), api("summary")]);
+    if (!f.ok || !c.ok || !s.ok) throw Error(f.error || c.error || s.error);
+    
+    F = f.data.rows;
+    C = c.data.rows;
+    S = s.data;
+
+    const canonicalFA = name => {
+      const n = String(name || "").trim().toUpperCase().replace(/\s+/g, " ");
+      if (n === "LAVAKUMAR") return "LAVAKUMAR T S";
+      if (n === "LOKESH") return "LOKESH R N";
+      return String(name || "").trim();
+    };
+
+    F.forEach(x => x.fa = canonicalFA(x.fa));
+    C.forEach(x => x.fa = canonicalFA(x.fa));
+
+    let fas = [...new Set(F.map(x => x.fa).concat(C.map(x => x.fa)).filter(Boolean))].sort();
+    if ($("ffa")) $("ffa").innerHTML = '<option value="">All Field Assistants</option>' + fas.map(x => `<option>${esc(x)}</option>`).join("");
+    
+    populateCropFAs();
+    farmers();
+    fruit();
+    crop();
+    dashboard();
+    if ($("status")) $("status").textContent = "Data loaded · refresh to check for new entries";
+  } catch (e) {
+    if ($("status")) $("status").textContent = e.message;
+    if ($("fout")) $("fout").textContent = e.message;
+  }
+}
+
 function farmers() {
   if (!$("ffa") || !$("ffarmer")) return;
   let a = F.filter(x => !$("ffa").value || x.fa === $("ffa").value);
@@ -223,11 +293,249 @@ function populateCropFAs() {
 
 function crop() {
   if (!$("cout") || !$("carea") || !$("cfa") || !$("csearch")) return;
-  let area = $("carea").value, fa = $("cfa").value, q = $("csearch").value.toLowerCase();
-  let r = C.filter(x => (!area || FA_AREA[x.fa] === area) && (!fa || x.fa === fa) && (!q || String(x.code).toLowerCase().includes(q) || String(x.farmer).toLowerCase().includes(q)));
-  if (!r.length) { $("cout").innerHTML = '<div class="panel">No crop records found.</div>'; return; }
-  let acres = sum(r, x => x.acres), qtyv = sum(r, x => x.quantity), val = sum(r, x => x.cropValue), cost = sum(r, x => x.inputCost), bal = sum(r, x => x.closingBalance);
-  $("cout").innerHTML = `<div class="panel"><div class="grid"><div class="metric"><small>Farmers</small><b>${r.length}</b></div><div class="metric"><small>Total acres</small><b>${acres.toFixed(2)}</b></div><div class="metric"><small>Quantity received</small><b>${kg(qtyv)}</b></div><div class="metric"><small>Crop value</small><b>${money(val)}</b></div></div><div class="tablewrap"><table><tr><th>FA</th><th>Code</th><th>Farmer</th><th>Father</th><th>Village</th><th>DOS</th><th>Acres</th><th>DOFH</th><th>DOLH</th><th>THD</th><th>Qty</th><th>Crop value</th><th>Input cost</th><th>Closing balance</th></tr>${r.map(x => `<tr><td>${esc(x.fa)}</td><td>${esc(x.code)}</td><td>${esc(x.farmer)}</td><td>${esc(x.father)}</td><td>${esc(x.village)}</td><td>${esc(x.dos)}</td><td>${x.acres}</td><td>${esc(x.dofh)}</td><td>${esc(x.dolh)}</td><td>${x.thd}</td><td>${x.quantity}</td><td>${money(x.cropValue)}</td><td>${money(x.inputCost)}</td><td>${money(x.closingBalance)}</td></tr>`).join("")}<tr class="total"><td colspan="6">TOTAL</td><td>${acres.toFixed(2)}</td><td colspan="3"></td><td>${qtyv}</td><td>${money(val)}</td><td>${money(cost)}</td><td>${money(bal)}</td></tr></table></div><button class="btn" onclick="print()">Print / Save PDF</button></div>`;
+  const area = $("carea").value, fa = $("cfa").value, q = $("csearch").value.toLowerCase().trim();
+
+  // Reactive filtering
+  const r = C.filter(x => 
+    (!area || FA_AREA[x.fa] === area) &&
+    (!fa || x.fa === fa) &&
+    (!q || String(x.code).toLowerCase().includes(q) || String(x.farmer).toLowerCase().includes(q) || String(x.village).toLowerCase().includes(q))
+  );
+
+  if (!r.length) {
+    $("cout").innerHTML = `
+      <div style="background:#fff;border:1px solid #e3eae4;border-radius:14px;padding:32px;text-align:center;color:#718076;margin-top:16px">
+        <h3>No matching crop records found</h3>
+        <p style="margin-top:6px;font-size:13px">Try adjusting your area, assistant filter, or search keywords.</p>
+      </div>`;
+    return;
+  }
+
+  // Aggregate financial and farm metrics
+  const farmersCount = r.length;
+  const acres = sum(r, x => x.acres);
+  const qtyv = sum(r, x => x.quantity);
+  const val = sum(r, x => x.cropValue);
+  const cost = sum(r, x => x.inputCost);
+  const bal = sum(r, x => x.closingBalance);
+
+  const isNetPositive = bal >= 0;
+  const balColor = isNetPositive ? "#15803d" : "#dc2626";
+  const balBg = isNetPositive ? "#f0fdf4" : "#fef2f2";
+  const balBorder = isNetPositive ? "#bbf7d0" : "#fecaca";
+
+  // 1. KPI Cards (6 cards matching reference)
+  const kpisHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:14px;margin-bottom:20px">
+      <div class="kpi" style="background:#fff;border:1px solid #e3eae4;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:22px">👥</span>
+        <div><div style="font-size:11px;color:#718076;text-transform:uppercase;font-weight:600">Farmers</div><b style="font-size:18px;color:#193f2a">${farmersCount}</b></div>
+      </div>
+      <div class="kpi" style="background:#fff;border:1px solid #e3eae4;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:22px">🌾</span>
+        <div><div style="font-size:11px;color:#718076;text-transform:uppercase;font-weight:600">Total Acres</div><b style="font-size:18px;color:#193f2a">${acres.toFixed(2)} <small style="font-size:11px;font-weight:normal">Acres</small></b></div>
+      </div>
+      <div class="kpi" style="background:#fff;border:1px solid #e3eae4;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:22px">⚖️</span>
+        <div><div style="font-size:11px;color:#718076;text-transform:uppercase;font-weight:600">Quantity Received</div><b style="font-size:18px;color:#193f2a">${kg(qtyv)}</b></div>
+      </div>
+      <div class="kpi" style="background:#fff;border:1px solid #e3eae4;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:22px">🌾₹</span>
+        <div><div style="font-size:11px;color:#718076;text-transform:uppercase;font-weight:600">Total Crop Value</div><b style="font-size:18px;color:#193f2a">${money(val)}</b></div>
+      </div>
+      <div class="kpi" style="background:#fffbeb;border:1px solid #fef3c7;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:22px">🪙</span>
+        <div><div style="font-size:11px;color:#92400e;text-transform:uppercase;font-weight:600">Input Cost</div><b style="font-size:18px;color:#b45309">${money(cost)}</b></div>
+      </div>
+      <div class="kpi" style="background:${balBg};border:1px solid ${balBorder};border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:22px">👛</span>
+        <div><div style="font-size:11px;color:${balColor};text-transform:uppercase;font-weight:600">Closing Balance</div><b style="font-size:18px;color:${balColor}">${money(bal)}</b></div>
+      </div>
+    </div>
+  `;
+
+  // 2. Visual: FA Financial Performance (Grouped Bar Chart SVG)
+  const chartCardStyle = "background:#fff;border:1px solid #e3eae4;border-radius:14px;padding:18px;min-width:0;box-shadow:0 3px 12px rgba(25,60,35,.05);display:flex;flex-direction:column";
+
+  const financeChart = (() => {
+    let entities = [];
+    if (fa) {
+      entities = [...r].sort((a,b) => (b.cropValue || 0) - (a.cropValue || 0)).slice(0, 7).map(x => ({
+        label: x.farmer.split(" ")[0],
+        cropVal: Number(x.cropValue || 0),
+        inputCost: Number(x.inputCost || 0)
+      }));
+    } else {
+      const faSet = [...new Set(r.map(x => x.fa).filter(Boolean))];
+      entities = faSet.map(faName => {
+        const faRows = r.filter(x => x.fa === faName);
+        return {
+          label: faName.replace(/ T S| R N| S| K S| N G/g, "").trim(),
+          cropVal: sum(faRows, x => x.cropValue),
+          inputCost: sum(faRows, x => x.inputCost)
+        };
+      }).sort((a,b) => b.cropVal - a.cropVal);
+    }
+
+    if (!entities.length) return '<p style="color:#718076;padding:12px">No data for chart</p>';
+
+    const w = 460, h = 250, left = 55, right = 15, top = 25, bottom = 42, plotW = w - left - right, plotH = h - top - bottom;
+    const maxVal = Math.max(...entities.map(e => Math.max(e.cropVal, e.inputCost)), 1000);
+    const niceMax = Math.ceil(maxVal / 10000) * 10000 || maxVal;
+    
+    const groupW = plotW / entities.length;
+    const barW = Math.min(Math.max(groupW * 0.35, 8), 18);
+
+    const grid = [0, 1, 2, 3].map(i => {
+      const v = niceMax * i / 3, yy = top + plotH - (v / niceMax) * plotH;
+      const lbl = v >= 100000 ? (v / 100000).toFixed(1) + 'L' : v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v;
+      return `<line x1="${left}" y1="${yy}" x2="${w-right}" y2="${yy}" stroke="#e8eee9" stroke-width="1"/><text x="${left-8}" y="${yy+4}" text-anchor="end" font-size="10" fill="#718076">₹${lbl}</text>`;
+    }).join("");
+
+    const bars = entities.map((e, i) => {
+      const cx = left + (i + 0.5) * groupW;
+      const hVal = (e.cropVal / niceMax) * plotH;
+      const hCost = (e.inputCost / niceMax) * plotH;
+      const yVal = top + plotH - hVal;
+      const yCost = top + plotH - hCost;
+
+      return `
+        <rect x="${cx - barW - 1}" y="${yVal}" width="${barW}" height="${Math.max(hVal, 1)}" fill="#1c7c4a" rx="2"><title>${e.label} Crop Value: ${money(e.cropVal)}</title></rect>
+        <rect x="${cx + 1}" y="${yCost}" width="${barW}" height="${Math.max(hCost, 1)}" fill="#d97706" rx="2"><title>${e.label} Input Cost: ${money(e.inputCost)}</title></rect>
+        <text x="${cx}" y="${h - 12}" text-anchor="middle" font-size="10" font-weight="600" fill="#2d3748">${esc(e.label)}</text>
+      `;
+    }).join("");
+
+    const legend = `
+      <g transform="translate(${left + 20}, 10)" font-size="11">
+        <rect x="0" y="0" width="10" height="10" rx="2" fill="#1c7c4a"/>
+        <text x="14" y="9" fill="#2d3748" font-size="10" font-weight="600">Crop Value</text>
+        <rect x="95" y="0" width="10" height="10" rx="2" fill="#d97706"/>
+        <text x="109" y="9" fill="#2d3748" font-size="10" font-weight="600">Input Costs</text>
+      </g>`;
+
+    return `<div style="width:100%;overflow-x:auto"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Financial Performance" style="width:100%;min-width:340px;height:auto;display:block">${grid}${legend}${bars}</svg></div>`;
+  })();
+
+  // 3. Visual: High Recovery Risk Alerts
+  const riskFarmers = r.filter(x => Number(x.closingBalance || 0) < 0).sort((a, b) => Number(a.closingBalance) - Number(b.closingBalance));
+
+  const riskAlertsHtml = riskFarmers.length ? riskFarmers.map(x => `
+    <div style="background:#fef2f2;border:1px solid #fee2e2;border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:#dc2626;font-size:15px">⚠️</span>
+        <div>
+          <div style="font-weight:700;color:#991b1b;font-size:12px">${esc(x.farmer)} (${esc(x.code)})</div>
+          <div style="font-size:10px;color:#b91c1c">${esc(x.village)} · FA: ${esc(x.fa)}</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700;color:#dc2626;font-size:13px">${money(x.closingBalance)}</div>
+        <small style="color:#b91c1c;font-size:9px">RECOVERY DEFICIT</small>
+      </div>
+    </div>
+  `).join("") : `
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:22px;text-align:center;color:#15803d">
+      <div style="font-size:20px;margin-bottom:4px">✓</div>
+      <strong>All Accounts Clear</strong>
+      <div style="font-size:12px;color:#166534;margin-top:2px">No negative balances or pending input recovery risks found.</div>
+    </div>
+  `;
+
+  // 4. Detail Settlement Ledger Table
+  const rowsHtml = r.map(x => {
+    const isNeg = Number(x.closingBalance || 0) < 0;
+    const badgeStyle = isNeg
+      ? "background:#fee2e2;color:#dc2626;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-block"
+      : "background:#dcfce7;color:#15803d;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-block";
+
+    return `
+      <tr>
+        <td><strong>${esc(x.fa)}</strong></td>
+        <td>${esc(x.code)}</td>
+        <td><strong>${esc(x.farmer)}</strong></td>
+        <td>${esc(x.village)}</td>
+        <td>${Number(x.acres || 0).toFixed(2)}</td>
+        <td>${Number(x.quantity || 0).toLocaleString("en-IN")}</td>
+        <td>${money(x.cropValue)}</td>
+        <td>${money(x.inputCost)}</td>
+        <td><span style="${badgeStyle}">${money(x.closingBalance)}</span></td>
+      </tr>
+    `;
+  }).join("");
+
+  // 5. Inject Complete Crop Analysis Layout
+  $("cout").innerHTML = `
+    ${kpisHtml}
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin-bottom:20px">
+      <article style="${chartCardStyle}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <h3 style="margin:0;color:#234b32;font-size:15px;font-weight:700">Financial Performance</h3>
+            <p style="margin:2px 0 8px;color:#718076;font-size:11px">${fa ? `Top farmers under ${esc(fa)}` : `Crop Value vs. Input Costs by Field Assistant`}</p>
+          </div>
+        </div>
+        ${financeChart}
+      </article>
+
+      <article style="${chartCardStyle}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <h3 style="margin:0;color:#991b1b;font-size:15px;font-weight:700">High Recovery Risk Alerts</h3>
+            <p style="margin:2px 0 8px;color:#718076;font-size:11px">${riskFarmers.length} farmer(s) with advances exceeding crop output</p>
+          </div>
+          <span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">${riskFarmers.length} Risks</span>
+        </div>
+        <div style="max-height:220px;overflow-y:auto;padding-right:4px">
+          ${riskAlertsHtml}
+        </div>
+      </article>
+    </div>
+
+    <section class="report-card" style="background:#fff;border:1px solid #e3eae4;border-radius:14px;overflow:hidden;box-shadow:0 3px 12px rgba(25,60,35,.05)">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e8eee9">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#187346;text-transform:uppercase;letter-spacing:0.5px">SETTLEMENT AUDIT</div>
+          <h2 style="font-size:16px;font-weight:700;color:#1f2937;margin:2px 0 0">Farmer Crop & Settlement Ledger</h2>
+        </div>
+        <span class="live-tag" style="font-size:12px;color:#15803d;font-weight:600">● ${farmersCount} Farmers Listed</span>
+      </div>
+      <div class="tablewrap" style="overflow-x:auto">
+        <table class="summary-table" style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#064e3b;color:#fff">
+              <th style="padding:10px 14px;text-align:left">FA</th>
+              <th style="padding:10px 14px;text-align:left">Code</th>
+              <th style="padding:10px 14px;text-align:left">Farmer</th>
+              <th style="padding:10px 14px;text-align:left">Village</th>
+              <th style="padding:10px 14px;text-align:left">Acres</th>
+              <th style="padding:10px 14px;text-align:left">Quantity (kg)</th>
+              <th style="padding:10px 14px;text-align:left">Crop Value</th>
+              <th style="padding:10px 14px;text-align:left">Input Cost</th>
+              <th style="padding:10px 14px;text-align:left">Closing Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+          <tfoot>
+            <tr class="total" style="background:#f3f4f6;font-weight:700;border-top:2px solid #064e3b">
+              <td colspan="4" style="padding:12px 14px">TOTAL (${farmersCount} Farmers)</td>
+              <td style="padding:12px 14px">${acres.toFixed(2)}</td>
+              <td style="padding:12px 14px">${Number(qtyv).toLocaleString("en-IN")} kg</td>
+              <td style="padding:12px 14px">${money(val)}</td>
+              <td style="padding:12px 14px;color:#b45309">${money(cost)}</td>
+              <td style="padding:12px 14px;color:${balColor}">${money(bal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div style="padding:14px 20px;background:#f9fafb;display:flex;justify-content:flex-end;border-top:1px solid #e8eee9">
+        <button class="btn print-btn" onclick="print()" style="background:#064e3b;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:600;cursor:pointer">Print / Save PDF</button>
+      </div>
+    </section>
+  `;
 }
 
 function dashboard() {
@@ -253,7 +561,7 @@ function dashboard() {
 
   const chartCardStyle = "background:#fff;border:1px solid #e3eae4;border-radius:14px;padding:18px;min-width:0;box-shadow:0 3px 12px rgba(25,60,35,.05);display:flex;flex-direction:column";
 
-  // 2. Visual 1: FA Yield Leaderboard (Protected against data errors)
+  // 2. Visual 1: FA Yield Leaderboard (Protected)
   let yieldSvg = "";
   try {
     const sorted = [...faRows].filter(x => x && x.name).sort((a, b) => Number(b.yield || 0) - Number(a.yield || 0));
